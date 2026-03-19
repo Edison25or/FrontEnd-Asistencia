@@ -1,0 +1,452 @@
+<div class="rev-root">
+
+  <!-- ══ CABECERA ══════════════════════════════════════════ -->
+  <div class="rev-header">
+    <div>
+      <h2 class="rev-titulo">Revisión de Asistencias</h2>
+      <p class="rev-subtitulo">Gestiona las quincenas y valida los tiempos fuera de programación</p>
+    </div>
+    @if (quincenaActual) {
+      <button class="btn-np" (click)="abrirModalNP()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Asistencia no programada
+      </button>
+    }
+  </div>
+
+  @if (errorGlobal) {
+    <div class="alerta-error">⚠ {{ errorGlobal }}</div>
+  }
+
+  <!-- ══ LAYOUT DOS COLUMNAS ═══════════════════════════════ -->
+  <div class="rev-layout">
+
+    <!-- ── PANEL IZQUIERDO: lista de quincenas ─────────────── -->
+    <aside class="panel-quincenas">
+      <div class="pq-header">
+        <span class="pq-titulo">Quincenas</span>
+        <button class="btn-nueva-q" (click)="mostrarModalQ = true" title="Nueva quincena">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+
+      @if (isLoadingQ) { <p class="pq-empty">Cargando...</p> }
+
+      <div class="pq-lista">
+        @for (q of quincenas; track q.idQuincena) {
+          <div class="pq-item"
+               [class.pq-activa]="quincenaActual?.idQuincena === q.idQuincena"
+               [class.pq-cerrada]="q.estado === 'CERRADA'"
+               (click)="seleccionarQuincena(q)">
+            <div class="pq-desc">{{ q.descripcion }}</div>
+            <div class="pq-rango">{{ q.fechaInicio }} → {{ q.fechaFin }}</div>
+            <div class="pq-footer">
+              <span class="pq-estado" [class.pq-estado-cerrada]="q.estado === 'CERRADA'"
+                    [class.pq-estado-abierta]="q.estado === 'ABIERTA'">
+                {{ q.estado }}
+              </span>
+              @if (q.pendientesRevision > 0) {
+                <span class="pq-pendientes">{{ q.pendientesRevision }} pendientes</span>
+              }
+            </div>
+          </div>
+        } @empty {
+          @if (!isLoadingQ) {
+            <p class="pq-empty">No hay quincenas. Crea la primera.</p>
+          }
+        }
+      </div>
+    </aside>
+
+    <!-- ── PANEL DERECHO: tabla de asistencias ─────────────── -->
+    <div class="panel-asistencias">
+
+      @if (!quincenaActual) {
+        <div class="selecciona-hint">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+          <p>Selecciona una quincena para revisar sus asistencias</p>
+        </div>
+      } @else {
+
+        <!-- Cabecera de la quincena seleccionada -->
+        <div class="qa-header">
+          <div class="qa-info">
+            <h3 class="qa-titulo">{{ quincenaActual.descripcion }}</h3>
+            <span class="qa-rango-real">
+              Período real: {{ quincenaActual.inicioReal | slice:0:16 }} → {{ quincenaActual.finReal | slice:0:16 }}
+            </span>
+          </div>
+          <div class="qa-contadores">
+            <span class="cnt cnt-verde">✓ {{ totalRevisados }} revisados</span>
+            <span class="cnt cnt-naranja">⏳ {{ totalPendientes }} pendientes</span>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="qa-filtros">
+          <input type="text" [(ngModel)]="filtroNombre" placeholder="Buscar trabajador..."
+                 class="filtro-input filtro-wide">
+          <select [(ngModel)]="filtroEstado" class="filtro-select">
+            <option value="">Todos los estados</option>
+            @for (e of TIPOS_ESTADO; track e) {
+              @if (e) { <option [value]="e">{{ e }}</option> }
+            }
+          </select>
+          <select [(ngModel)]="filtroTipo" class="filtro-select">
+            <option value="">Todos los tipos</option>
+            @for (t of TIPOS_ASIST; track t) {
+              @if (t) { <option [value]="t">{{ t }}</option> }
+            }
+          </select>
+          <button class="btn-limpiar" (click)="filtroNombre='';filtroEstado='';filtroTipo=''">✕</button>
+        </div>
+
+        <!-- Tabla de asistencias -->
+        @if (isLoadingA) {
+          <div class="qa-loading">Cargando asistencias...</div>
+        } @else {
+          <div class="qa-tabla-wrap">
+            <table class="qa-tabla">
+              <thead>
+                <tr>
+                  <th>Trabajador</th>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th class="th-center">Ing. Prog</th>
+                  <th class="th-center">Sal. Prog</th>
+                  <th class="th-center">Ing. Real</th>
+                  <th class="th-center">Sal. Real</th>
+                  <th class="th-center" title="Tiempo antes del ingreso programado">Prev</th>
+                  <th class="th-center" title="Tiempo después de la salida programada">Post</th>
+                  <th class="th-center">Tardanza</th>
+                  <th class="th-center">H. Totales</th>
+                  <th class="th-center">🌙</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of asistenciasFiltradas; track a.idAsistencia) {
+                  <tr [class.fila-revisada]="a.estado === 'REVISADO'"
+                      [class.fila-falta]="a.tipo === 'FALTA'"
+                      [class.fila-pendiente]="a.estado === 'PENDIENTE'">
+
+                    <td class="td-trabajador">
+                      <div class="trab-nombre">{{ a.nombreCompleto }}</div>
+                      <div class="trab-puesto">{{ a.puestoNombre }}</div>
+                    </td>
+
+                    <td class="td-fecha">
+                      <div>{{ a.fecha }}</div>
+                    </td>
+
+                    <td>
+                      <span class="tipo-badge" [ngClass]="tipoBadge(a.tipo)">{{ a.tipo }}</span>
+                    </td>
+
+                    <td>
+                      <span class="estado-badge" [ngClass]="estadoBadge(a.estado)">{{ a.estado }}</span>
+                    </td>
+
+                    <td class="td-center td-hora">{{ a.ingresoProg ?? '—' }}</td>
+                    <td class="td-center td-hora">{{ a.salidaProg  ?? '—' }}</td>
+                    <td class="td-center td-hora td-real">{{ a.ingresoReal ?? '—' }}</td>
+                    <td class="td-center td-hora td-real">{{ a.salidaReal  ?? '—' }}</td>
+
+                    <!-- Tiempo previo con indicador de color -->
+                    <td class="td-center">
+                      @if (a.minPrevIngProg > 0) {
+                        <span class="tiempo-pill" [ngClass]="colorPill(a.colorPrev)"
+                              [title]="'Validado: ' + formatMin(a.valMinPrevIng)">
+                          {{ formatMin(a.minPrevIngProg) }}
+                          @if (a.valMinPrevIng > 0) { <span class="val-tick">✓</span> }
+                        </span>
+                      } @else { <span class="td-null">—</span> }
+                    </td>
+
+                    <!-- Tiempo posterior con indicador de color -->
+                    <td class="td-center">
+                      @if (a.minPostSalProg > 0) {
+                        <span class="tiempo-pill" [ngClass]="colorPill(a.colorPost)"
+                              [title]="'Validado: ' + formatMin(a.valMinPostSal)">
+                          {{ formatMin(a.minPostSalProg) }}
+                          @if (a.valMinPostSal > 0) { <span class="val-tick">✓</span> }
+                        </span>
+                      } @else { <span class="td-null">—</span> }
+                    </td>
+
+                    <td class="td-center">
+                      @if (a.minTardanza > 0) {
+                        <span class="tardanza-pill">{{ formatMin(a.minTardanza) }}</span>
+                      } @else { <span class="td-null">—</span> }
+                    </td>
+
+                    <td class="td-center td-totales">
+                      {{ formatMin(a.minHorasTotales) }}
+                    </td>
+
+                    <td class="td-center">
+                      @if (a.esNocturno) { <span title="Turno nocturno">🌙</span> }
+                    </td>
+
+                    <td class="td-accion">
+                      @if (puedeValidar(a)) {
+                        <button class="btn-revisar" (click)="abrirModalVal(a)"
+                                [title]="a.estado === 'REVISADO' ? 'Editar revisión' : 'Revisar'">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      }
+                    </td>
+
+                  </tr>
+                } @empty {
+                  <tr><td colspan="14" class="tabla-vacio">
+                    No hay asistencias para esta quincena con los filtros seleccionados.
+                  </td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div><!-- /panel-asistencias -->
+  </div><!-- /rev-layout -->
+</div><!-- /rev-root -->
+
+
+<!-- ══ MODAL: CREAR QUINCENA ═══════════════════════════════ -->
+@if (mostrarModalQ) {
+  <div class="modal-overlay" (click)="mostrarModalQ=false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nueva Quincena</h3>
+        <button class="modal-close" (click)="mostrarModalQ=false">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (errorQ) { <div class="alerta-error">{{ errorQ }}</div> }
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Año</label>
+            <input type="number" [(ngModel)]="nuevoAnio" class="input-field" min="2020" max="2099">
+          </div>
+          <div class="form-group">
+            <label>Mes</label>
+            <select [(ngModel)]="nuevoMes" class="input-field">
+              @for (m of MESES; track $index) {
+                @if ($index > 0) { <option [value]="$index">{{ m }}</option> }
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Quincena</label>
+            <select [(ngModel)]="nuevoNumero" class="input-field">
+              <option [value]="1">1ra (1–15)</option>
+              <option [value]="2">2da (16–fin)</option>
+            </select>
+          </div>
+        </div>
+        <div class="preview-periodo">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {{ nuevoNumero === 1 ? 'Período: 1 al 15' : 'Período: 16 al fin' }} de {{ MESES[nuevoMes] }} {{ nuevoAnio }}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalQ=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="crearQuincena()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Creando...' : 'Crear quincena' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL: VALIDAR TIEMPOS ══════════════════════════════ -->
+@if (mostrarModalVal && asistenciaVal) {
+  <div class="modal-overlay" (click)="mostrarModalVal=false">
+    <div class="modal-box modal-md" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Revisar asistencia</h3>
+          <span class="modal-sub">{{ asistenciaVal.nombreCompleto }} — {{ asistenciaVal.fecha }}</span>
+        </div>
+        <button class="modal-close" (click)="mostrarModalVal=false">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (errorVal) { <div class="alerta-error">{{ errorVal }}</div> }
+
+        <!-- Resumen del día -->
+        <div class="resumen-dia">
+          <div class="rd-item">
+            <span class="rd-label">Ingreso prog.</span>
+            <span class="rd-val">{{ asistenciaVal.ingresoProg ?? '—' }}</span>
+          </div>
+          <div class="rd-item">
+            <span class="rd-label">Salida prog.</span>
+            <span class="rd-val">{{ asistenciaVal.salidaProg ?? '—' }}</span>
+          </div>
+          <div class="rd-sep">|</div>
+          <div class="rd-item">
+            <span class="rd-label">Ingreso real</span>
+            <span class="rd-val rd-real">{{ asistenciaVal.ingresoReal ?? '—' }}</span>
+          </div>
+          <div class="rd-item">
+            <span class="rd-label">Salida real</span>
+            <span class="rd-val rd-real">{{ asistenciaVal.salidaReal ?? '—' }}</span>
+          </div>
+          <div class="rd-sep">|</div>
+          <div class="rd-item">
+            <span class="rd-label">Refrigerio</span>
+            <span class="rd-val">{{ formatMin(asistenciaVal.minRefrigerioProg) }}</span>
+          </div>
+          <div class="rd-item">
+            <span class="rd-label">Tardanza</span>
+            <span class="rd-val rd-tardanza">{{ formatMin(asistenciaVal.minTardanza) }}</span>
+          </div>
+        </div>
+
+        <!-- Tiempos no programados -->
+        <div class="tnp-seccion">
+          <div class="tnp-titulo">Tiempos fuera de programación</div>
+
+          <!-- PREVIO -->
+          <div class="tnp-fila" [class.tnp-sin-dato]="!asistenciaVal.minPrevIngProg">
+            <div class="tnp-info">
+              <span class="tnp-label">Tiempo previo al ingreso</span>
+              <span class="tiempo-pill" [ngClass]="colorPill(asistenciaVal.colorPrev)">
+                {{ formatMin(asistenciaVal.minPrevIngProg) }}
+              </span>
+              <span class="tnp-hint">
+                ({{ asistenciaVal.ingresoReal }} – {{ asistenciaVal.ingresoProg }})
+              </span>
+            </div>
+            <div class="tnp-control">
+              <label class="tnp-label-small">Validar (min)</label>
+              <input type="number" [(ngModel)]="valPrev" class="input-sm-num"
+                     min="0" [max]="asistenciaVal.minPrevIngProg ?? 0"
+                     [disabled]="!asistenciaVal.minPrevIngProg">
+              <button class="btn-max" (click)="valPrev = asistenciaVal.minPrevIngProg ?? 0"
+                      [disabled]="!asistenciaVal.minPrevIngProg" title="Validar todo">
+                Máx
+              </button>
+              <button class="btn-cero" (click)="valPrev = 0"
+                      [disabled]="!asistenciaVal.minPrevIngProg" title="No validar">
+                0
+              </button>
+            </div>
+          </div>
+
+          <!-- POSTERIOR -->
+          <div class="tnp-fila" [class.tnp-sin-dato]="!asistenciaVal.minPostSalProg">
+            <div class="tnp-info">
+              <span class="tnp-label">Tiempo posterior a la salida</span>
+              <span class="tiempo-pill" [ngClass]="colorPill(asistenciaVal.colorPost)">
+                {{ formatMin(asistenciaVal.minPostSalProg) }}
+              </span>
+              <span class="tnp-hint">
+                ({{ asistenciaVal.salidaProg }} – {{ asistenciaVal.salidaReal }})
+              </span>
+            </div>
+            <div class="tnp-control">
+              <label class="tnp-label-small">Validar (min)</label>
+              <input type="number" [(ngModel)]="valPost" class="input-sm-num"
+                     min="0" [max]="asistenciaVal.minPostSalProg ?? 0"
+                     [disabled]="!asistenciaVal.minPostSalProg">
+              <button class="btn-max" (click)="valPost = asistenciaVal.minPostSalProg ?? 0"
+                      [disabled]="!asistenciaVal.minPostSalProg" title="Validar todo">
+                Máx
+              </button>
+              <button class="btn-cero" (click)="valPost = 0"
+                      [disabled]="!asistenciaVal.minPostSalProg" title="No validar">
+                0
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tipo de asistencia -->
+        <div class="form-group">
+          <label>Clasificación</label>
+          <select [(ngModel)]="valTipo" class="input-field">
+            <option value="PROGRAMADA">Programada</option>
+            <option value="NO_PROGRAMADA">No programada</option>
+            <option value="FALTA">Falta</option>
+            <option value="PERMISO">Permiso / Recuperable</option>
+          </select>
+        </div>
+
+        <!-- Observación -->
+        <div class="form-group">
+          <label>Observación</label>
+          <textarea [(ngModel)]="valObservacion" class="input-area"
+                    rows="2" placeholder="Notas del supervisor..."></textarea>
+        </div>
+
+        <!-- Horas totales estimadas -->
+        <div class="horas-preview">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Horas totales actuales: <strong>{{ formatMin(asistenciaVal.minHorasTotales) }}</strong>
+          @if (asistenciaVal.revisadoPor) {
+            · Última revisión: <em>{{ asistenciaVal.revisadoPor }}</em>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalVal=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardarValidacion()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Guardando...' : 'Guardar revisión' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL: ASISTENCIA NO PROGRAMADA ═════════════════════ -->
+@if (mostrarModalNP) {
+  <div class="modal-overlay" (click)="mostrarModalNP=false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Asistencia no programada</h3>
+          <span class="modal-sub">Trabajo extraordinario o fuera de turno</span>
+        </div>
+        <button class="modal-close" (click)="mostrarModalNP=false">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (errorNP) { <div class="alerta-error">{{ errorNP }}</div> }
+
+        <div class="form-group">
+          <label>ID Trabajador <span class="req">*</span></label>
+          <input type="number" [(ngModel)]="npIdTrabajador" class="input-field"
+                 placeholder="ID numérico del trabajador">
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Fecha <span class="req">*</span></label>
+            <input type="date" [(ngModel)]="npFecha" class="input-field">
+          </div>
+          <div class="form-group">
+            <label>Ingreso real <span class="req">*</span></label>
+            <input type="time" [(ngModel)]="npIngreso" class="input-field">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Salida real <span class="text-muted">(opcional, puede registrarse después)</span></label>
+          <input type="time" [(ngModel)]="npSalida" class="input-field">
+        </div>
+        <div class="form-group">
+          <label>Observación</label>
+          <textarea [(ngModel)]="npObservacion" class="input-area" rows="2"
+                    placeholder="Motivo del trabajo extraordinario..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalNP=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardarNoProgramada()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Registrando...' : 'Registrar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

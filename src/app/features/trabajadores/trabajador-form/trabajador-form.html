@@ -1,0 +1,159 @@
+<div class="form-container">
+  <div class="form-header">
+    <button type="button" class="btn-back" (click)="cancelar()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Volver
+    </button>
+    <h2>Registrar Nuevo Trabajador</h2>
+    <p>Complete los datos para generar el perfil y la cuenta de acceso del sistema.</p>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert-error">
+    {{ errorMessage }}
+  </div>
+
+  <form [formGroup]="trabajadorForm" (ngSubmit)="onSubmit()" class="custom-form">
+
+    <!-- 1 DATOS PERSONALES -->
+    <h3 class="section-title">1. Datos Personales</h3>
+    <div class="form-grid">
+
+      <div class="input-group">
+        <label>Tipo de Documento *</label>
+        <select formControlName="docIdentidad">
+          <option value="DNI">DNI</option>
+          <option value="CE">Carnet de Extranjería</option>
+          <option value="PASAPORTE">Pasaporte</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Número de Documento *</label>
+        <input type="text" formControlName="nroDocumento" placeholder="Ej. 72345678">
+      </div>
+
+      <div class="input-group">
+        <label>Primer Nombre *</label>
+        <input type="text" formControlName="pNombre" placeholder="Ej. Carlos">
+      </div>
+
+      <div class="input-group">
+        <label>Segundo Nombre</label>
+        <input type="text" formControlName="sNombre" placeholder="Opcional">
+      </div>
+
+      <div class="input-group">
+        <label>Apellido Paterno *</label>
+        <input type="text" formControlName="aPaterno" placeholder="Ej. Quispe">
+      </div>
+
+      <div class="input-group">
+        <label>Apellido Materno *</label>
+        <input type="text" formControlName="aMaterno" placeholder="Ej. Mamani">
+      </div>
+
+      <div class="input-group">
+        <label>Fecha de Nacimiento *</label>
+        <input type="date" formControlName="fechaNac">
+      </div>
+
+      <div class="input-group">
+        <label>Género *</label>
+        <select formControlName="idGenero">
+          <option value="" disabled>Seleccione...</option>
+          <option *ngFor="let genero of generos" [value]="genero.idGenero">
+            {{ genero.genero }}
+          </option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- 2 CONTACTO Y EMPRESA -->
+    <h3 class="section-title">2. Contacto y Empresa</h3>
+    <div class="form-grid">
+
+      <div class="input-group">
+        <label>Correo Electrónico *</label>
+        <input type="email" formControlName="email" placeholder="correo@empresa.com">
+      </div>
+
+      <div class="input-group">
+        <label>Teléfono Celular</label>
+        <input type="text" formControlName="telefono" placeholder="Ej. 987654321">
+      </div>
+
+      <div class="input-group full-width">
+        <label>Dirección de Residencia</label>
+        <input type="text" formControlName="direccion" placeholder="Ej. Av. Los Incas 123">
+      </div>
+
+      <div class="input-group">
+        <label>Área *</label>
+        <select formControlName="idArea">
+          <option value="" disabled>Seleccione el área...</option>
+          <option *ngFor="let area of areas" [value]="area.idArea">
+            {{ area.area }}
+          </option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Puesto Asignado *</label>
+        <select formControlName="idPuesto">
+          <option value="" disabled>Seleccione el puesto...</option>
+          <option *ngFor="let puesto of puestos" [value]="puesto.idPuesto">
+            {{ puesto.puesto }}
+          </option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- 3 CONTACTO DE EMERGENCIA -->
+    <h3 class="section-title">3. Contacto de Emergencia</h3>
+    <div class="form-grid">
+
+      <div class="input-group">
+        <label>Nombre del Contacto</label>
+        <input type="text" formControlName="contactoEmergencias" placeholder="Nombre completo">
+      </div>
+
+      <div class="input-group">
+        <label>Número del Contacto</label>
+        <input type="text" formControlName="nroContacto" placeholder="Celular o Fijo">
+      </div>
+
+      <div class="input-group">
+        <label>Parentesco</label>
+        <select formControlName="parentesco">
+          <option value="" disabled>Seleccione el parentesco...</option>
+          <option value="PADRE">Padre</option>
+          <option value="MADRE">Madre</option>
+          <option value="CONYUGE">Cónyuge</option>
+          <option value="HIJO_A">Hijo(a)</option>
+          <option value="HERMANO_A">Hermano(a)</option>
+          <option value="OTRO">Otro</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- BOTONES -->
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cancelar()" [disabled]="isLoading">
+        Cancelar
+      </button>
+
+      <button type="submit" class="btn-primary" [disabled]="trabajadorForm.invalid || isLoading">
+        <span *ngIf="!isLoading">Guardar Trabajador</span>
+        <span *ngIf="isLoading">Guardando...</span>
+      </button>
+    </div>
+
+  </form>
+</div>

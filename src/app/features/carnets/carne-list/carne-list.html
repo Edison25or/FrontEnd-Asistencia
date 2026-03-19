@@ -1,0 +1,90 @@
+<div class="carne-container">
+
+  <!-- CABECERA -->
+  <div class="carne-header">
+    <div>
+      <h2 class="carne-titulo">Generación de Carnés</h2>
+      <p class="carne-subtitulo">Selecciona los trabajadores e imprime sus carnés con código de barras</p>
+    </div>
+    <button class="btn-imprimir" [disabled]="totalSeleccionados === 0 || isGenerando" (click)="imprimirSeleccionados()">
+      @if (isGenerando) {
+        <span class="spinner"></span> Generando PDF...
+      } @else {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir seleccionados ({{ totalSeleccionados }})
+      }
+    </button>
+  </div>
+
+  <!-- INFO -->
+  <div class="info-box">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Cada trabajador genera un PDF con <strong>dos carnés</strong> juntos (8.5 × 12.4 cm): <strong style="color:#16a34a">ENTRADA</strong> y <strong style="color:#6b7280">SALIDA</strong>. Imprímelo, dóblalo y enmiélalo.</span>
+  </div>
+
+  <!-- TABLA -->
+  <div class="tabla-card">
+    <div class="toolbar">
+      <div class="search-box">
+        <svg class="icon-search" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Buscar por nombre, DNI, área o puesto..." [(ngModel)]="terminoBusqueda" (input)="filtrar()">
+      </div>
+      @if (totalSeleccionados > 0) {
+        <button class="btn-limpiar" (click)="limpiarSeleccion()">✕ Limpiar selección</button>
+      }
+    </div>
+
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th style="width:40px; text-align:center">
+            <input type="checkbox" [checked]="todosSeleccionados" (change)="toggleTodos()" title="Seleccionar todos">
+          </th>
+          <th>Trabajador</th>
+          <th>DNI</th>
+          <th>Área / Puesto</th>
+          <th style="text-align:center">Códigos</th>
+          <th style="text-align:center">Imprimir</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of trabajadoresFiltrados; track t.idTrabajador) {
+          <tr [class.seleccionado]="seleccionados.has(t.idTrabajador)" (click)="toggleSeleccion(t.idTrabajador)">
+            <td style="text-align:center" (click)="$event.stopPropagation()">
+              <input type="checkbox" [checked]="seleccionados.has(t.idTrabajador)" (change)="toggleSeleccion(t.idTrabajador)">
+            </td>
+            <td>
+              <div class="trabajador-row">
+                <div class="avatar">{{ t.nombreCompleto?.charAt(0) }}</div>
+                <span class="nombre">{{ t.nombreCompleto }}</span>
+              </div>
+            </td>
+            <td class="doc">{{ t.nroDocumento }}</td>
+            <td>
+              <div class="area">{{ t.areaNombre }}</div>
+              <div class="puesto">{{ t.puestoNombre }}</div>
+            </td>
+            <td style="text-align:center">
+              <div class="codigos">
+                <span class="codigo-badge entrada">{{ t.idTrabajador }}IN</span>
+                <span class="codigo-badge salida">{{ t.idTrabajador }}OU</span>
+              </div>
+            </td>
+            <td style="text-align:center" (click)="$event.stopPropagation()">
+              <button class="btn-print-individual" title="Imprimir este carné" [disabled]="isGenerando" (click)="imprimirIndividual(t)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="empty-cell">
+              {{ isLoading ? 'Cargando trabajadores...' : 'No se encontraron trabajadores.' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+</div>

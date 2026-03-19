@@ -1,0 +1,129 @@
+<div class="asistencia-container">
+
+  <!-- CABECERA -->
+  <div class="asistencia-header">
+    <div>
+      <h2 class="asistencia-titulo">Asistencia del Día</h2>
+      <p class="asistencia-fecha">{{ getFechaHoy() }}</p>
+    </div>
+    <button class="btn-refrescar" (click)="refrescar()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      Actualizar
+    </button>
+  </div>
+
+  <!-- TARJETAS DE RESUMEN -->
+  <div class="resumen-grid">
+    <div class="resumen-card" [class.activo]="filtroEstado === ''" (click)="filtrarPorEstado('')">
+      <div class="resumen-icono azul">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="resumen-datos">
+        <span class="resumen-numero">{{ totalPresente }}</span>
+        <span class="resumen-label">Registros hoy</span>
+      </div>
+    </div>
+
+    <div class="resumen-card" [class.activo]="filtroEstado === 'A_TIEMPO'" (click)="filtrarPorEstado('A_TIEMPO')">
+      <div class="resumen-icono verde">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="resumen-datos">
+        <span class="resumen-numero">{{ totalATiempo }}</span>
+        <span class="resumen-label">A Tiempo</span>
+      </div>
+    </div>
+
+    <div class="resumen-card" [class.activo]="filtroEstado === 'TARDE'" (click)="filtrarPorEstado('TARDE')">
+      <div class="resumen-icono amarillo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="resumen-datos">
+        <span class="resumen-numero">{{ totalTarde }}</span>
+        <span class="resumen-label">Tardanzas</span>
+      </div>
+    </div>
+
+    <div class="resumen-card">
+      <div class="resumen-icono verde-oscuro">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="resumen-datos">
+        <span class="resumen-numero">{{ totalEnPlanta }}</span>
+        <span class="resumen-label">En Planta Ahora</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCADOR Y TABLA -->
+  <div class="tabla-card">
+    <div class="tabla-toolbar">
+      <div class="search-box">
+        <svg class="icon-search" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Buscar por nombre, DNI, área o puesto..."
+               [(ngModel)]="terminoBusqueda" (keyup)="buscar()">
+      </div>
+
+      @if (filtroEstado) {
+        <button class="btn-limpiar-filtro" (click)="filtrarPorEstado('')">
+          ✕ Quitar filtro: {{ getEtiquetaFiltro() }}
+        </button>
+      }
+    </div>
+
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Trabajador</th>
+          <th>Área / Puesto</th>
+          <th style="text-align:center">Entrada</th>
+          <th style="text-align:center">Salida</th>
+          <th style="text-align:center">Tipo</th>
+          <th style="text-align:center">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of asistenciasFiltradas; track a.idAsistencia) {
+          <tr>
+            <td>
+              <div class="trabajador-nombre">{{ a.nombreCompleto }}</div>
+              <div class="trabajador-doc">{{ a.nroDocumento }}</div>
+            </td>
+            <td>
+              <div class="area-nombre">{{ a.areaNombre }}</div>
+              <div class="puesto-nombre">{{ a.puestoNombre }}</div>
+            </td>
+            <td style="text-align:center">
+              <span class="hora-badge entrada">{{ a.horaEntrada || '—' }}</span>
+            </td>
+            <td style="text-align:center">
+              <span class="hora-badge salida">{{ a.horaSalida || '—' }}</span>
+            </td>
+            <td style="text-align:center">
+              <span class="tipo-badge" [ngClass]="getTipoBadge(a.tipo)">
+                {{ getTipoLabel(a.tipo) }}
+              </span>
+            </td>
+            <td style="text-align:center">
+              <!-- Muestra el estado diario (A_TIEMPO/TARDE/etc.) en lugar del workflow -->
+              <span class="estado-badge" [class]="getClaseEstado(a)">
+                {{ getEtiquetaEstado(a) }}
+              </span>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" style="text-align:center; padding: 40px; color: #64748b;">
+              @if (isLoading) {
+                <strong>Cargando registros...</strong>
+              } @else {
+                <strong>No hay registros de asistencia para hoy.</strong>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+</div>

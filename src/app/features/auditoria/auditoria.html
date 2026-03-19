@@ -1,0 +1,93 @@
+<div class="aud-container">
+
+  <!-- CABECERA -->
+  <div class="aud-header">
+    <div>
+      <h2 class="aud-titulo">Registro de Auditoría</h2>
+      <p class="aud-subtitulo">Historial de cambios en el sistema — solo visible para SuperAdmin</p>
+    </div>
+    <span class="aud-total">{{ totalElements }} registro{{ totalElements !== 1 ? 's' : '' }}</span>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros-bar">
+    <select [(ngModel)]="filtroTabla" (change)="buscar()" class="filtro-select">
+      <option value="">Todas las tablas</option>
+      @for (t of TABLAS; track t) { <option [value]="t">{{ t }}</option> }
+    </select>
+
+    <select [(ngModel)]="filtroAccion" (change)="buscar()" class="filtro-select">
+      <option value="">Todas las acciones</option>
+      @for (a of ACCIONES; track a) { <option [value]="a">{{ a }}</option> }
+    </select>
+
+    <input type="date" [(ngModel)]="filtroDesde" (change)="buscar()" class="filtro-input" title="Desde">
+    <input type="date" [(ngModel)]="filtroHasta" (change)="buscar()" class="filtro-input" title="Hasta">
+
+    <button class="btn-limpiar" (click)="limpiarFiltros()" title="Limpiar filtros">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Limpiar
+    </button>
+  </div>
+
+  <!-- TABLA -->
+  <div class="tabla-card">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Acción</th>
+          <th>Tabla</th>
+          <th>ID</th>
+          <th>Campo</th>
+          <th>Valor anterior</th>
+          <th>Valor nuevo</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading) {
+          <tr><td colspan="9" class="tabla-vacio">Cargando...</td></tr>
+        }
+        @for (r of registros; track r.id) {
+          <tr>
+            <td class="col-fecha">{{ formatFecha(r.fecha) }}</td>
+            <td class="col-usuario">{{ r.nombreUsuario }}</td>
+            <td><span class="badge-accion" [ngClass]="badgeClass(r.accion)">{{ r.accion }}</span></td>
+            <td class="col-tabla">{{ r.tabla }}</td>
+            <td class="col-id">{{ r.idRegistro }}</td>
+            <td class="col-campo">{{ r.campo || '—' }}</td>
+            <td class="col-valor anterior">
+              @if (r.valorAnterior) { <span class="val-anterior">{{ r.valorAnterior }}</span> }
+              @else { <span class="val-null">—</span> }
+            </td>
+            <td class="col-valor">
+              @if (r.valorNuevo) { <span class="val-nuevo">{{ r.valorNuevo }}</span> }
+              @else { <span class="val-null">—</span> }
+            </td>
+            <td class="col-ip">{{ r.ipOrigen || '—' }}</td>
+          </tr>
+        } @empty {
+          @if (!isLoading) {
+            <tr><td colspan="9" class="tabla-vacio">No hay registros para los filtros seleccionados.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PAGINACIÓN -->
+  @if (totalPages > 1) {
+    <div class="paginacion">
+      <button class="btn-pag" (click)="paginaAnterior()" [disabled]="pageActual === 0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="pag-info">Página {{ pageActual + 1 }} de {{ totalPages }}</span>
+      <button class="btn-pag" (click)="paginaSiguiente()" [disabled]="pageActual >= totalPages - 1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  }
+
+</div>

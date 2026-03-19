@@ -1,0 +1,155 @@
+<div class="reporte-container">
+
+  <!-- CABECERA -->
+  <div class="reporte-header">
+    <div>
+      <h2 class="reporte-titulo">Reporte de Asistencias</h2>
+      <p class="reporte-subtitulo">Filtra y exporta el registro de asistencias a Excel</p>
+    </div>
+    @if (buscado && registros.length > 0) {
+      <button class="btn-exportar" [disabled]="isExportando" (click)="exportar()">
+        @if (isExportando) {
+          <span class="spinner"></span> Exportando...
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Excel ({{ totalRegistros }})
+        }
+      </button>
+    }
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros-card">
+    <div class="filtros-grid">
+
+      <!-- Rango de fechas -->
+      <div class="form-group">
+        <label>Fecha inicio <span class="req">*</span></label>
+        <input type="date" [(ngModel)]="fechaInicio">
+      </div>
+      <div class="form-group">
+        <label>Fecha fin <span class="req">*</span></label>
+        <input type="date" [(ngModel)]="fechaFin">
+      </div>
+
+      <!-- Área -->
+      <div class="form-group">
+        <label>Área</label>
+        <select [(ngModel)]="idArea">
+          <option [ngValue]="null">Todas las áreas</option>
+          @for (a of areas; track a.idArea) {
+            <option [ngValue]="a.idArea">{{ a.area }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Trabajador con autocomplete -->
+      <div class="form-group" style="position:relative">
+        <label>Trabajador</label>
+        <div class="trab-input-wrapper">
+          <input
+            type="text"
+            placeholder="Buscar por nombre o DNI..."
+            [(ngModel)]="terminoBusquedaTrab"
+            (input)="filtrarTrabajadores()"
+          >
+          @if (idTrabajador) {
+            <button class="btn-clear-trab" (click)="limpiarTrabajador()" title="Quitar filtro">✕</button>
+          }
+        </div>
+        @if (terminoBusquedaTrab && !idTrabajador && trabajadoresFiltrados.length > 0) {
+          <div class="trab-dropdown">
+            @for (t of trabajadoresFiltrados | slice:0:8; track t.idTrabajador) {
+              <div class="trab-option" (click)="seleccionarTrabajador(t)">
+                <span class="trab-nombre">{{ t.nombreCompleto }}</span>
+                <span class="trab-dni">{{ t.nroDocumento }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="filtros-footer">
+      <button class="btn-buscar" [disabled]="isLoading" (click)="buscar()">
+        @if (isLoading) {
+          <span class="spinner spinner-dark"></span> Buscando...
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Buscar
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- RESUMEN -->
+  @if (buscado) {
+    <div class="resumen-grid">
+      <div class="resumen-card">
+        <span class="resumen-valor">{{ totalRegistros }}</span>
+        <span class="resumen-label">Total registros</span>
+      </div>
+      <div class="resumen-card ok">
+        <span class="resumen-valor">{{ totalATiempo }}</span>
+        <span class="resumen-label">A tiempo</span>
+      </div>
+      <div class="resumen-card tarde">
+        <span class="resumen-valor">{{ totalTarde }}</span>
+        <span class="resumen-label">Tardanzas</span>
+      </div>
+      <div class="resumen-card falta">
+        <span class="resumen-valor">{{ totalFaltas }}</span>
+        <span class="resumen-label">Faltas</span>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="tabla-card">
+      <div class="tabla-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Día</th>
+              <th>Trabajador</th>
+              <th>DNI</th>
+              <th>Área</th>
+              <th>Puesto</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Laborado</th>
+              <th>Estado</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of registros; track r.idTrabajador + r.fecha) {
+              <tr>
+                <td class="fecha-cell">{{ r.fecha }}</td>
+                <td class="dia-cell">{{ r.diaSemana }}</td>
+                <td class="nombre-cell">{{ r.nombreCompleto }}</td>
+                <td class="doc-cell">{{ r.nroDocumento }}</td>
+                <td>{{ r.areaNombre }}</td>
+                <td>{{ r.puestoNombre }}</td>
+                <td class="hora-cell">{{ r.horaEntrada ?? '—' }}</td>
+                <td class="hora-cell">{{ r.horaSalida  ?? '—' }}</td>
+                <td class="hora-cell">{{ minutosAHoras(r.minutosLaborados) }}</td>
+                <td>
+                  <span class="estado-badge" [ngClass]="estadoClass(r.estado)">
+                    {{ r.estadoLabel }}
+                  </span>
+                </td>
+                <td class="obs-cell" [title]="r.observacion">{{ r.observacion || '—' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="11" class="empty-cell">No se encontraron registros para los filtros seleccionados.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+</div>

@@ -1,0 +1,386 @@
+<div class="cons-root">
+
+  <!-- CABECERA -->
+  <div class="cons-header">
+    <div>
+      <h2 class="cons-titulo">Consolidado de Quincena</h2>
+      <p class="cons-subtitulo">Resumen de horas por trabajador con clasificación diurno/nocturno y gestión de bolsa</p>
+    </div>
+  </div>
+
+  @if (errorGlobal) { <div class="alerta-error">⚠ {{ errorGlobal }}</div> }
+
+  <div class="cons-layout">
+
+    <!-- PANEL IZQUIERDO: quincenas -->
+    <aside class="panel-q">
+      <div class="pq-titulo">Quincenas</div>
+      @if (isLoadingQ) { <p class="empty-msg">Cargando...</p> }
+      <div class="pq-lista">
+        @for (q of quincenas; track q.idQuincena) {
+          <div class="pq-item" [class.pq-sel]="quincenaActual?.idQuincena === q.idQuincena"
+               [class.pq-cerrada]="q.estado === 'CERRADA'" (click)="seleccionar(q)">
+            <div class="pq-desc">{{ q.descripcion }}</div>
+            <div class="pq-rango">{{ q.fechaInicio }} → {{ q.fechaFin }}</div>
+            <div class="pq-pie">
+              <span class="estado-badge" [ngClass]="estadoBadge(q.estado)">{{ q.estado }}</span>
+              @if (q.pendientesRevision > 0) {
+                <span class="pq-pend">⚠ {{ q.pendientesRevision }} pendientes</span>
+              }
+              @if (q.estado === 'REAPERTURA_PENDIENTE' && esSuperAdmin()) {
+                <button class="btn-aprobar-small" (click)="abrirAprobar(q); $event.stopPropagation()">
+                  Aprobar
+                </button>
+              }
+            </div>
+          </div>
+        } @empty {
+          @if (!isLoadingQ) { <p class="empty-msg">Sin quincenas.</p> }
+        }
+      </div>
+    </aside>
+
+    <!-- PANEL DERECHO: consolidado -->
+    <div class="panel-cons">
+
+      @if (!quincenaActual) {
+        <div class="hint-vacio">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <p>Selecciona una quincena</p>
+        </div>
+      } @else {
+
+        <!-- Cabecera de la quincena seleccionada -->
+        <div class="qc-header">
+          <div>
+            <h3 class="qc-titulo">{{ quincenaActual.descripcion }}</h3>
+            <div class="qc-meta">
+              <span class="estado-badge" [ngClass]="estadoBadge(quincenaActual.estado)">
+                {{ quincenaActual.estado }}
+              </span>
+              @if (quincenaActual.pendientesRevision > 0) {
+                <span class="warn-pend">⚠ {{ quincenaActual.pendientesRevision }} asistencias sin revisar</span>
+              }
+              <span class="qc-total">{{ consolidados.length }} trabajadores</span>
+            </div>
+          </div>
+          <div class="qc-acciones">
+            @if (esAdmin() && quincenaActual.puedeGenerarse) {
+              <button class="btn-generar" (click)="generarConsolidado()" [disabled]="isProcesando">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                {{ consolidados.length > 0 ? 'Regenerar' : 'Generar consolidado' }}
+              </button>
+            }
+            @if (esAdmin() && quincenaActual.puedeCerrarse && consolidados.length > 0) {
+              <button class="btn-cerrar-q" (click)="abrirCierre()" [disabled]="isProcesando">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Cerrar quincena
+              </button>
+            }
+            @if (esAdmin() && quincenaActual.estado === 'CERRADA') {
+              <button class="btn-reaper" (click)="abrirReaper()">Solicitar reapertura</button>
+            }
+          </div>
+        </div>
+
+        <!-- Filtro -->
+        <input type="text" [(ngModel)]="filtroNombre" placeholder="Buscar trabajador..."
+               class="filtro-nombre">
+
+        <!-- Tabla del consolidado -->
+        @if (isLoadingC) { <div class="loading-msg">Cargando consolidado...</div> }
+        @else if (consolidados.length === 0) {
+          <div class="hint-vacio">
+            <p>No hay consolidado generado para esta quincena.</p>
+            @if (quincenaActual.pendientesRevision > 0) {
+              <p class="warn-text">Primero revisa todas las asistencias pendientes.</p>
+            }
+          </div>
+        } @else {
+          <div class="tabla-wrap">
+            <table class="cons-tabla">
+              <thead>
+                <tr>
+                  <th rowspan="2">Trabajador</th>
+                  <th colspan="2" class="th-grupo">Horas Normales</th>
+                  <th colspan="4" class="th-grupo">Horas Extra</th>
+                  <th colspan="2" class="th-grupo">Descuentos</th>
+                  <th colspan="3" class="th-grupo th-bolsa">Bolsa de Horas</th>
+                  <th rowspan="2">Otro Bono</th>
+                  <th rowspan="2">Estado</th>
+                  <th rowspan="2"></th>
+                </tr>
+                <tr>
+                  <th class="th-sub">Día</th>
+                  <th class="th-sub">Noche</th>
+                  <th class="th-sub th-tasa">Extra Día A<br><small>{{ consolidados[0]?.tasaA }}%</small></th>
+                  <th class="th-sub th-tasa">Extra Noche A<br><small>{{ consolidados[0]?.tasaA }}%</small></th>
+                  <th class="th-sub th-tasa">Extra Día B<br><small>{{ consolidados[0]?.tasaB }}%</small></th>
+                  <th class="th-sub th-tasa">Extra Noche B<br><small>{{ consolidados[0]?.tasaB }}%</small></th>
+                  <th class="th-sub">Faltas</th>
+                  <th class="th-sub">Días F/P</th>
+                  <th class="th-sub">Entrada</th>
+                  <th class="th-sub">Acum.</th>
+                  <th class="th-sub">Salida</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of consolidadosFiltrados; track c.id) {
+                  <tr [class.fila-cerrada]="c.estado === 'CERRADO'">
+                    <td class="td-trab">
+                      <div class="trab-n">{{ c.trabajadorNombre }}</div>
+                      <div class="trab-p">{{ c.puestoNombre }} — {{ c.areaNombre }}</div>
+                    </td>
+                    <td class="td-num">{{ c.hNormalesDia }}</td>
+                    <td class="td-num td-noche">{{ c.hNormalesNoche }}</td>
+                    <td class="td-num td-extra">{{ c.hExtraDiaA }}</td>
+                    <td class="td-num td-extra td-noche">{{ c.hExtraNocheA }}</td>
+                    <td class="td-num td-extra">{{ c.hExtraDiaB }}</td>
+                    <td class="td-num td-extra td-noche">{{ c.hExtraNocheB }}</td>
+                    <td class="td-num td-desc">
+                      @if (c.minDiaDescontar > 0 || c.minNocheDescontar > 0) {
+                        <span class="chip-desc">
+                          {{ formatMin(c.minDiaDescontar + c.minNocheDescontar) }}
+                        </span>
+                      } @else { — }
+                    </td>
+                    <td class="td-num">
+                      @if (c.diasFalta > 0) { <span class="chip-falta">F: {{ c.diasFalta }}</span> }
+                      @if (c.diasPermiso > 0){ <span class="chip-perm">P: {{ c.diasPermiso }}</span> }
+                    </td>
+                    <!-- Bolsa -->
+                    <td class="td-num td-bolsa" [class.bolsa-neg]="c.bolsaEntrada < 0">
+                      {{ formatMin(c.bolsaEntrada) }}
+                    </td>
+                    <td class="td-num td-bolsa">{{ formatMin(c.bolsaAcumulada) }}</td>
+                    <td class="td-num td-bolsa" [class.bolsa-neg]="c.bolsaSalida < 0">
+                      {{ formatMin(c.bolsaSalida) }}
+                    </td>
+                    <td class="td-num">
+                      @if (c.otroBono > 0) {
+                        <span class="chip-bono" [title]="c.detalleOtroBono">
+                          S/ {{ c.otroBono | number:'1.2-2' }}
+                        </span>
+                      } @else { — }
+                    </td>
+                    <td>
+                      <span class="estado-badge" [ngClass]="estadoConsBadge(c.estado)">
+                        {{ c.estado }}
+                      </span>
+                    </td>
+                    <td class="td-acciones">
+                      @if (esAdmin() && c.estado !== 'CERRADO') {
+                        <button class="btn-edit" (click)="abrirEditar(c)" title="Editar bonos/observaciones">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ MODAL EDITAR CAMPOS MANUALES ═══════════════════════ -->
+@if (mostrarModalEditar && consolidadoEditar) {
+  <div class="modal-overlay" (click)="mostrarModalEditar=false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Editar consolidado</h3>
+          <span class="modal-sub">{{ consolidadoEditar.trabajadorNombre }}</span>
+        </div>
+        <button class="modal-close" (click)="mostrarModalEditar=false">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (errorEdit) { <div class="alerta-error">{{ errorEdit }}</div> }
+        <div class="form-group">
+          <label>Otro bono (S/.)</label>
+          <input type="number" [(ngModel)]="editOtroBono" class="input-field" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Detalle del bono</label>
+          <input type="text" [(ngModel)]="editDetalleBono" class="input-field"
+                 placeholder="Descripción del bono...">
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea [(ngModel)]="editObservaciones" class="input-area" rows="3"
+                    placeholder="Notas adicionales..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalEditar=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardarEdicion()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL CIERRE DE QUINCENA ════════════════════════════ -->
+@if (mostrarModalCierre) {
+  <div class="modal-overlay" (click)="mostrarModalCierre=false">
+    <div class="modal-box modal-xl" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Cerrar quincena — Decisiones de horas extra</h3>
+          <span class="modal-sub">{{ quincenaActual.descripcion }}</span>
+        </div>
+        <button class="modal-close" (click)="mostrarModalCierre=false">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (errorCierre) { <div class="alerta-error">{{ errorCierre }}</div> }
+
+        <div class="aviso-cierre">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Define qué hacer con las horas extra de cada trabajador. Esta acción cerrará la quincena y calculará la bolsa final.
+        </div>
+
+        <div class="cierre-tabla-wrap">
+          <table class="cierre-tabla">
+            <thead>
+              <tr>
+                <th>Trabajador</th>
+                <th class="th-c">Total extra</th>
+                <th class="th-c">Bolsa entrada</th>
+                <th>Pagar (min)</th>
+                <th>A bolsa (min)</th>
+                <th>Consumir bolsa (min)</th>
+                <th class="th-c">Bolsa salida estimada</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of consolidados; track c.idTrabajador) {
+                <tr>
+                  <td class="td-trab-sm">{{ c.trabajadorNombre }}</td>
+                  <td class="td-c">{{ formatMin(totalExtraMin(c)) }}</td>
+                  <td class="td-c" [class.bolsa-neg]="c.bolsaEntrada < 0">
+                    {{ formatMin(c.bolsaEntrada) }}
+                  </td>
+                  <td>
+                    <input type="number" class="input-dec"
+                           [(ngModel)]="decisionesExtra[c.idTrabajador].minExtraPagados"
+                           (ngModelChange)="onPagadosChange(c.idTrabajador, c, $event)"
+                           min="0" [max]="totalExtraMin(c)">
+                  </td>
+                  <td>
+                    <input type="number" class="input-dec"
+                           [(ngModel)]="decisionesExtra[c.idTrabajador].minExtraABolsa"
+                           min="0" [max]="totalExtraMin(c)">
+                  </td>
+                  <td>
+                    <input type="number" class="input-dec"
+                           [(ngModel)]="decisionesExtra[c.idTrabajador].bolsaConsumida"
+                           min="0">
+                  </td>
+                  <td class="td-c" [class.bolsa-neg]="(c.bolsaEntrada + (decisionesExtra[c.idTrabajador]?.minExtraABolsa ?? 0) - (decisionesExtra[c.idTrabajador]?.bolsaConsumida ?? 0)) < 0">
+                    {{ formatMin(c.bolsaEntrada
+                       + (decisionesExtra[c.idTrabajador]?.minExtraABolsa ?? 0)
+                       - (decisionesExtra[c.idTrabajador]?.bolsaConsumida ?? 0)) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalCierre=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-cerrar-ok" (click)="ejecutarCierre()" [disabled]="isProcesando">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          {{ isProcesando ? 'Cerrando...' : 'Confirmar cierre' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL RESULTADO CIERRE ══════════════════════════════ -->
+@if (mostrarResultadoCierre && resultadoCierre) {
+  <div class="modal-overlay" (click)="mostrarResultadoCierre=false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Quincena cerrada</h3>
+        <button class="modal-close" (click)="mostrarResultadoCierre=false">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cierre-ok">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#dcfce7"/><polyline points="8 12 11 15 16 9" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <p class="cierre-titulo">{{ resultadoCierre.descripcion }}</p>
+            <p class="cierre-sub">{{ resultadoCierre.consolidadosCerrados }} trabajadores consolidados</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-guardar" (click)="mostrarResultadoCierre=false">Entendido</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL SOLICITAR REAPERTURA ══════════════════════════ -->
+@if (mostrarModalReaper) {
+  <div class="modal-overlay" (click)="mostrarModalReaper=false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Solicitar reapertura</h3>
+        <button class="modal-close" (click)="mostrarModalReaper=false">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (errorReaper) { <div class="alerta-error">{{ errorReaper }}</div> }
+        <p class="reaper-aviso">Esta solicitud quedará pendiente hasta que el SuperAdmin la apruebe.</p>
+        <div class="form-group">
+          <label>Motivo de reapertura <span class="req">*</span></label>
+          <textarea [(ngModel)]="motivoReaper" class="input-area" rows="3"
+                    placeholder="Explica por qué se necesita reabrir esta quincena..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalReaper=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="solicitarReapertura()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Enviando...' : 'Enviar solicitud' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL APROBAR REAPERTURA (SuperAdmin) ══════════════ -->
+@if (mostrarModalAprobar && quincenaParaAprobar) {
+  <div class="modal-overlay" (click)="mostrarModalAprobar=false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Aprobar reapertura</h3>
+        <button class="modal-close" (click)="mostrarModalAprobar=false">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>¿Confirmas reabrir la quincena <strong>{{ quincenaParaAprobar.descripcion }}</strong>?</p>
+        @if (quincenaParaAprobar.motivoReaper) {
+          <div class="motivo-reaper">
+            <strong>Motivo:</strong> {{ quincenaParaAprobar.motivoReaper }}
+          </div>
+        }
+        <p class="reaper-aviso">Los consolidados cerrados volverán a estado BORRADOR.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalAprobar=false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-cerrar-ok" (click)="aprobarReapertura()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Aprobando...' : 'Sí, reabrir' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

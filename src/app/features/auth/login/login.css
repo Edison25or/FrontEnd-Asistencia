@@ -1,0 +1,385 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.login-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f3f4f6;
+    padding: 20px;
+}
+
+.login-card {
+    display: flex;
+    width: 100%;
+    max-width: 950px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    min-height: 550px;
+}
+
+/* --- PANEL IZQUIERDO (VERDE DIRECTO) --- */
+.brand-side {
+    flex: 1;
+    background-color: #8cc63f; /* Verde aplicado directamente */
+    padding: 50px 40px;
+    color: white; /* Ahora sí se verá el texto */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Estilo para tu logo */
+.real-logo {
+    height: 120px;
+    /*background: white;*/
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-bottom: 40px;
+    object-fit: contain;
+}
+
+.brand-top h1 {
+    font-size: 3rem;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    font-weight: 800;
+}
+
+.brand-top p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+.brand-bottom p {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    line-height: 1.5;
+}
+
+/* --- PANEL DERECHO (BLANCO) --- */
+.form-side {
+    flex: 1.2;
+    padding: 60px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.form-header { 
+    margin-bottom: 30px; 
+}
+.form-header h2 { 
+    font-size: 2rem; 
+    color: #1f2937; 
+    margin-bottom: 10px; 
+}
+
+.form-header p { 
+    color: #6b7280; 
+    font-size: 0.95rem; 
+}
+
+.input-group { 
+    margin-bottom: 20px; 
+}
+
+.input-group label { 
+    display: block; 
+    font-size: 0.9rem; 
+    font-weight: 600; 
+    color: #1f2937; 
+    margin-bottom: 8px; 
+}
+
+.label-row { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 8px; 
+}
+
+.label-row label { 
+    margin-bottom: 0; 
+}
+
+.forgot-link { 
+    color: #8cc63f; 
+    text-decoration: none; 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+}
+
+.forgot-link:hover { 
+    text-decoration: underline; 
+}
+
+.input-wrapper { 
+    position: relative; 
+    display: flex; 
+    align-items: center; 
+}
+
+.input-icon { 
+    position: absolute; 
+    left: 14px; 
+    width: 20px; 
+    height: 20px; 
+    color: #9ca3af; 
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #1f2937;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.input-wrapper input:focus {
+    border-color: #8cc63f;
+    box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.2);
+}
+
+.error-msg { 
+    color: #dc2626; 
+    font-size: 0.85rem; 
+    margin-bottom: 15px; 
+    font-weight: 500; 
+}
+
+.btn-submit {
+    width: 100%;
+    background-color: #8cc63f;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s;
+    margin-top: 10px;
+}
+
+.btn-submit:hover:not(:disabled) { 
+    background-color: #7bb332; 
+}
+
+.btn-submit:disabled { 
+    background-color: #9ca3af; 
+    cursor: not-allowed; 
+}
+
+.role-notice { 
+    margin-top: 40px; 
+    text-align: center; 
+    font-size: 0.85rem; 
+    color: #6b7280; 
+    border-top: 1px solid #e5e7eb; 
+    padding-top: 20px; 
+}
+
+/* --- ESTILOS DE ÉXITO --- */
+.success-container { 
+    text-align: center; 
+    animation: fadeIn 0.4s ease-out forwards; 
+}
+
+.success-icon-wrapper { 
+    width: 70px; 
+    height: 70px; 
+    background-color: #f0fdf4; 
+    border: 4px solid #dcfce7; 
+    border-radius: 50%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin: 0 auto 20px; 
+}
+
+.success-icon-wrapper svg { 
+    width: 35px; 
+    height: 35px; 
+}
+
+.success-container h2 { 
+    color: #1f2937; 
+    margin-bottom: 10px; 
+}
+
+.success-container p { 
+    color: #6b7280; 
+    margin-bottom: 30px; 
+}
+
+.loading-bar { 
+    width: 100%; 
+    height: 8px; 
+    background-color: #e5e7eb; 
+    border-radius: 10px; 
+    overflow: hidden; 
+    position: relative; 
+}
+
+.progress { 
+    width: 40%; 
+    height: 100%; 
+    background-color: #8cc63f; 
+    border-radius: 10px; 
+    animation: slideProgress 2s ease-in-out infinite; 
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideProgress { 0% { transform: translateX(-100%); width: 20%; } 50% { width: 40%; } 100% { transform: translateX(300%); width: 20%; } }
+
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #9ca3af; /* Color gris suave */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.toggle-password:hover {
+    color: #8cc63f; /* Cambia al verde de Avendacom al pasar el mouse */
+}
+
+/* Ajustamos el padding derecho del input para que el texto no se encime con el ojo */
+.input-wrapper input {
+    padding-right: 45px;
+}
+/* ── FIELD ERROR ── */
+.field-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ── FORGOT LINK como botón ── */
+.forgot-link {
+  color: #8cc63f;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.forgot-link:hover { text-decoration: underline; }
+
+/* ── MODAL OVERLAY ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-recuperar {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  text-align: center;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+  animation: slideUp 0.25s ease-out;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+.modal-close:hover { color: #374151; background: #f3f4f6; }
+
+.modal-icon {
+  width: 64px;
+  height: 64px;
+  background: #f0fdf4;
+  border: 3px solid #dcfce7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.modal-recuperar h3 {
+  font-size: 1.4rem;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+.modal-recuperar p {
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.recuperar-msg {
+  color: #374151 !important;
+  font-weight: 500;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px !important;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── AVISO RECUPERAR CONTRASEÑA ── */
+.recuperar-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  color: #1e40af;
+  line-height: 1.5;
+  margin-top: 16px;
+  text-align: left;
+}
+.recuperar-aviso svg { flex-shrink: 0; margin-top: 2px; }

@@ -1,0 +1,295 @@
+<div class="maestros-container">
+
+  <!-- ── HEADER ───────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Tablas Maestras</h2>
+      <p class="page-subtitle">Gestión de Géneros, Áreas y Puestos del sistema</p>
+    </div>
+    <button class="btn-nuevo" (click)="abrirCrear()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo {{ labelSingular }}
+    </button>
+  </div>
+
+  <!-- ── TABS ─────────────────────────────────────────── -->
+  <div class="tabs-bar">
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'generos'" (click)="setTab('generos')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Géneros
+      <span class="tab-badge">{{ generos.length }}</span>
+    </button>
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'areas'" (click)="setTab('areas')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Áreas
+      <span class="tab-badge">{{ areas.length }}</span>
+    </button>
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'puestos'" (click)="setTab('puestos')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      Puestos
+      <span class="tab-badge">{{ puestos.length }}</span>
+    </button>
+  </div>
+
+  <!-- ── TABLA ─────────────────────────────────────────── -->
+  <div class="tabla-card">
+
+    @if (isLoading) {
+      <div class="estado-vacio">Cargando...</div>
+    }
+
+    <!-- TABLA: GÉNEROS -->
+    @if (!isLoading && tabActual === 'generos') {
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (g of generos; track g.idGenero) {
+            <tr [class.fila-inactiva]="!g.activo">
+              <td class="col-id">{{ g.idGenero }}</td>
+              <td class="col-nombre">{{ g.genero }}</td>
+              <td>
+                <span class="badge" [class.badge-activo]="g.activo" [class.badge-inactivo]="!g.activo">
+                  {{ g.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="col-acciones">
+                <button class="btn-icon edit" title="Editar" (click)="abrirEditar(g)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                </button>
+                <button class="btn-icon" [class.toggle-off]="g.activo" [class.toggle-on]="!g.activo"
+                        [title]="g.activo ? 'Deshabilitar' : 'Habilitar'" (click)="confirmarToggle(g)">
+                  @if (g.activo) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  }
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="estado-vacio">No hay géneros registrados.</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <!-- TABLA: ÁREAS -->
+    @if (!isLoading && tabActual === 'areas') {
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of areas; track a.idArea) {
+            <tr [class.fila-inactiva]="!a.activo">
+              <td class="col-id">{{ a.idArea }}</td>
+              <td class="col-nombre">{{ a.area }}</td>
+              <td>
+                <span class="badge" [class.badge-activo]="a.activo" [class.badge-inactivo]="!a.activo">
+                  {{ a.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="col-acciones">
+                <button class="btn-icon edit" title="Editar" (click)="abrirEditar(a)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                </button>
+                <button class="btn-icon" [class.toggle-off]="a.activo" [class.toggle-on]="!a.activo"
+                        [title]="a.activo ? 'Deshabilitar' : 'Habilitar'" (click)="confirmarToggle(a)">
+                  @if (a.activo) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  }
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="estado-vacio">No hay áreas registradas.</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <!-- TABLA: PUESTOS -->
+    @if (!isLoading && tabActual === 'puestos') {
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Puesto</th>
+            <th>Área</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of puestos; track p.idPuesto) {
+            <tr [class.fila-inactiva]="!p.activo">
+              <td class="col-id">{{ p.idPuesto }}</td>
+              <td class="col-nombre">{{ p.puesto }}</td>
+              <td><span class="chip-area">{{ p.areaNombre }}</span></td>
+              <td class="col-desc">{{ p.descripcionPuesto || '—' }}</td>
+              <td>
+                <span class="badge" [class.badge-activo]="p.activo" [class.badge-inactivo]="!p.activo">
+                  {{ p.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="col-acciones">
+                <button class="btn-icon edit" title="Editar" (click)="abrirEditar(p)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                </button>
+                <button class="btn-icon" [class.toggle-off]="p.activo" [class.toggle-on]="!p.activo"
+                        [title]="p.activo ? 'Deshabilitar' : 'Habilitar'" (click)="confirmarToggle(p)">
+                  @if (p.activo) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  }
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="estado-vacio">No hay puestos registrados.</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+
+  </div><!-- /tabla-card -->
+</div><!-- /maestros-container -->
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: CREAR / EDITAR                                  -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarModal) {
+  <div class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>{{ modalTitulo }}</h3>
+        <button class="modal-close" (click)="cerrarModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- FORM GÉNERO -->
+      @if (tabActual === 'generos') {
+        <form [formGroup]="generoForm">
+          <div class="campo">
+            <label>Nombre del Género *</label>
+            <input type="text" formControlName="genero" placeholder="Ej: Masculino" class="input-text" maxlength="20">
+            @if (generoForm.get('genero')?.invalid && generoForm.get('genero')?.touched) {
+              <span class="campo-error">El nombre es obligatorio (máx. 20 caracteres).</span>
+            }
+          </div>
+        </form>
+      }
+
+      <!-- FORM ÁREA -->
+      @if (tabActual === 'areas') {
+        <form [formGroup]="areaForm">
+          <div class="campo">
+            <label>Nombre del Área *</label>
+            <input type="text" formControlName="area" placeholder="Ej: Recursos Humanos" class="input-text" maxlength="100">
+            @if (areaForm.get('area')?.invalid && areaForm.get('area')?.touched) {
+              <span class="campo-error">El nombre es obligatorio (máx. 100 caracteres).</span>
+            }
+          </div>
+        </form>
+      }
+
+      <!-- FORM PUESTO -->
+      @if (tabActual === 'puestos') {
+        <form [formGroup]="puestoForm">
+          <div class="campo">
+            <label>Nombre del Puesto *</label>
+            <input type="text" formControlName="puesto" placeholder="Ej: Analista de Sistemas" class="input-text" maxlength="100">
+            @if (puestoForm.get('puesto')?.invalid && puestoForm.get('puesto')?.touched) {
+              <span class="campo-error">El nombre es obligatorio (máx. 100 caracteres).</span>
+            }
+          </div>
+          <div class="campo">
+            <label>Área *</label>
+            <select formControlName="idArea" class="input-select">
+              <option value="" disabled>Seleccione el área...</option>
+              @for (a of areasActivas; track a.idArea) {
+                <option [value]="a.idArea">{{ a.area }}</option>
+              }
+            </select>
+            @if (puestoForm.get('idArea')?.invalid && puestoForm.get('idArea')?.touched) {
+              <span class="campo-error">Debe seleccionar un área.</span>
+            }
+          </div>
+          <div class="campo">
+            <label>Descripción <span class="opcional">(opcional)</span></label>
+            <textarea formControlName="descripcionPuesto" class="input-textarea"
+                      placeholder="Breve descripción del puesto..." maxlength="255" rows="3"></textarea>
+          </div>
+        </form>
+      }
+
+      @if (modalError) {
+        <div class="modal-error">{{ modalError }}</div>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModal()" [disabled]="guardando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardar()" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : (modalMode === 'crear' ? 'Crear' : 'Guardar cambios') }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: CONFIRMAR TOGGLE                                -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarConfirmToggle && itemToggle) {
+  <div class="modal-overlay" (click)="cancelarToggle()">
+    <div class="modal-card modal-toggle" (click)="$event.stopPropagation()">
+
+      <div class="toggle-icono" [class.icono-deshabilitar]="itemToggle.activo" [class.icono-habilitar]="!itemToggle.activo">
+        @if (itemToggle.activo) {
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+        } @else {
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><polyline points="12 6 12 12 16 14"/></svg>
+        }
+      </div>
+
+      <h3>{{ itemToggle.activo ? 'Deshabilitar' : 'Habilitar' }} {{ labelSingular }}</h3>
+      <p>
+        ¿Confirmas que deseas <strong>{{ itemToggle.activo ? 'deshabilitar' : 'habilitar' }}</strong> el registro
+        <strong>«{{ itemToggle.genero ?? itemToggle.area ?? itemToggle.puesto }}»</strong>?
+      </p>
+      @if (itemToggle.activo) {
+        <p class="toggle-aviso">Los registros deshabilitados no aparecerán en los formularios del sistema.</p>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cancelarToggle()">Cancelar</button>
+        <button class="btn-toggle-confirm" [class.btn-deshabilitar]="itemToggle.activo" [class.btn-habilitar]="!itemToggle.activo"
+                (click)="procesarToggle()">
+          {{ itemToggle.activo ? 'Sí, deshabilitar' : 'Sí, habilitar' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

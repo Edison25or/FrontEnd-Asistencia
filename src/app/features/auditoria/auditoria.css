@@ -1,0 +1,68 @@
+.aud-container  { padding: 28px 32px; max-width: 1300px; }
+.aud-header     { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.aud-titulo     { font-size: 1.4rem; font-weight: 700; color: #111827; margin: 0 0 4px; }
+.aud-subtitulo  { font-size: .86rem; color: #6b7280; margin: 0; }
+.aud-total      { font-size: .84rem; color: #9ca3af; align-self: center; }
+
+/* ── Filtros ──────────────────────────────────────────────── */
+.filtros-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.filtro-select, .filtro-input {
+  padding: 7px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+  font-size: .86rem; color: #111827; background: #fff; font-family: inherit;
+}
+.filtro-select:focus, .filtro-input:focus { outline: none; border-color: #8cc63f; }
+.btn-limpiar {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 14px; background: #f3f4f6; color: #374151;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+  font-size: .84rem; font-weight: 600; cursor: pointer;
+}
+.btn-limpiar:hover { background: #e5e7eb; }
+
+/* ── Tabla ────────────────────────────────────────────────── */
+.tabla-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: auto; }
+.tabla      { width: 100%; border-collapse: collapse; font-size: .83rem; white-space: nowrap; }
+.tabla thead tr { background: #f8fafc; border-bottom: 2px solid #e5e7eb; }
+.tabla th { padding: 10px 12px; text-align: left; font-size: .74rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+.tabla td { padding: 9px 12px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+.tabla tbody tr:last-child td { border-bottom: none; }
+.tabla tbody tr:hover { background: #fafafa; }
+.tabla-vacio { text-align: center; padding: 36px; color: #9ca3af; }
+
+.col-fecha   { color: #6b7280; font-size: .78rem; }
+.col-usuario { font-weight: 600; color: #111827; }
+.col-tabla   { color: #6b7280; font-size: .78rem; }
+.col-id      { color: #9ca3af; font-size: .78rem; font-family: monospace; }
+.col-campo   { color: #374151; font-style: italic; }
+.col-valor   { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.col-ip      { color: #9ca3af; font-size: .75rem; font-family: monospace; }
+
+.val-anterior { background: #fef2f2; color: #991b1b; border-radius: 4px; padding: 1px 6px; font-size: .78rem; }
+.val-nuevo    { background: #f0fdf4; color: #166534; border-radius: 4px; padding: 1px 6px; font-size: .78rem; }
+.val-null     { color: #d1d5db; }
+
+/* ── Badges de acción ─────────────────────────────────────── */
+.badge-accion {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .02em;
+}
+.badge-verde   { background: #dcfce7; color: #166534; }
+.badge-azul    { background: #dbeafe; color: #1e40af; }
+.badge-rojo    { background: #fee2e2; color: #991b1b; }
+.badge-naranja { background: #ffedd5; color: #9a3412; }
+.badge-amarillo{ background: #fef9c3; color: #854d0e; }
+.badge-morado  { background: #f3e8ff; color: #6b21a8; }
+.badge-gris    { background: #f3f4f6; color: #4b5563; }
+
+/* ── Paginación ───────────────────────────────────────────── */
+.paginacion { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; }
+.btn-pag {
+  width: 32px; height: 32px; border: 1.5px solid #e5e7eb; background: #fff;
+  border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #374151; transition: background .15s;
+}
+.btn-pag:hover:not(:disabled) { background: #f3f4f6; }
+.btn-pag:disabled { opacity: .4; cursor: not-allowed; }
+.pag-info { font-size: .84rem; color: #6b7280; }

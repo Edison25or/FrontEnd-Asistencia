@@ -1,3 +1,77 @@
 import { Routes } from '@angular/router';
+import { LoginComponent } from './features/auth/login/login';
+import { DashboardComponent } from './features/dashboard/dashboard';
+import { authGuard } from './core/guards/auth.guard';
 
-export const routes: Routes = [];
+export const routes: Routes = [
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
+  { path: 'login', component: LoginComponent },
+  {
+    path: 'marcado',
+    loadComponent: () => import('./features/asistencia/marcado/marcado').then(m => m.MarcadoComponent)
+  },
+  {
+    path: 'dashboard',
+    component: DashboardComponent,
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'trabajadores',
+        loadComponent: () => import('./features/trabajadores/trabajador-list/trabajador-list').then(m => m.TrabajadorListComponent)
+      },
+      {
+        path: 'trabajadores/nuevo',
+        loadComponent: () => import('./features/trabajadores/trabajador-form/trabajador-form').then(m => m.TrabajadorFormComponent)
+      },
+      {
+        path: 'asistencias',
+        loadComponent: () => import('./features/asistencia/asistencia-dia/asistencia-dia').then(m => m.AsistenciaDiaComponent)
+      },
+      {
+        path: 'reporte',
+        loadComponent: () => import('./features/asistencia/reporte-asistencia/reporte-asistencia').then(m => m.ReporteAsistenciaComponent)
+      },
+      {
+        path: 'carnets',
+        loadComponent: () => import('./features/carnets/carne-list/carne-list').then(m => m.CarneListComponent)
+      },
+      {
+        path: 'esquemas-horario',
+        loadComponent: () => import('./features/esquemas-horario/esquema-horario-list/esquema-horario-list').then(m => m.EsquemaHorarioListComponent)
+      },
+      {
+        path: 'grupos',
+        loadComponent: () => import('./features/grupos/grupo-list/grupo-list').then(m => m.GrupoListComponent)
+      },
+      {
+        path: 'programacion',
+        loadComponent: () => import('./features/programacion/programacion-semanal/programacion-semanal').then(m => m.ProgramacionSemanalComponent)
+      },
+      {
+        path: 'maestros',
+        loadComponent: () => import('./features/maestros/maestros').then(m => m.MaestrosComponent)
+      },
+      {
+        path: 'auditoria',
+        loadComponent: () => import('./features/auditoria/auditoria').then(m => m.AuditoriaComponent)
+      },
+      {
+        path: 'revision-asistencias',
+        loadComponent: () => import('./features/asistencia/revision-asistencia/revision-asistencia').then(m => m.RevisionAsistenciaComponent)
+      },
+      {
+        path: 'consolidado',
+        loadComponent: () => import('./features/consolidado/consolidado').then(m => m.ConsolidadoComponent)
+      },
+      {
+        path: 'reporte-consolidado',
+        loadComponent: () => import('./features/consolidado/reporte-consolidado/reporte-consolidado').then(m => m.ReporteConsolidadoComponent)
+      },
+      {
+        path: 'historial-bolsa',
+        loadComponent: () => import('./features/consolidado/historial-bolsa/historial-bolsa').then(m => m.HistorialBolsaComponent)
+      },
+      { path: '', redirectTo: 'asistencias', pathMatch: 'full' }
+    ]
+  }
+];

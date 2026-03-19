@@ -1,0 +1,400 @@
+<div class="prog-root">
+
+  <!-- ══ CABECERA ════════════════════════════════════════════ -->
+  <div class="prog-header">
+    <div>
+      <h2 class="prog-titulo">Programación Semanal</h2>
+      <p class="prog-subtitulo">Arrastra un grupo desde el panel derecho hacia un esquema de horario.</p>
+    </div>
+    <!-- Selector de semana + botón confirmar (punto 5) -->
+    <div class="semana-bar">
+      <label class="semana-label">Semana:</label>
+      <select [(ngModel)]="semanaSeleccionada" (change)="cambiarSemana()" class="semana-select">
+        <option value="">Todas</option>
+        @for (s of getSemanas(); track s.value) {
+          <option [value]="s.value">{{ s.label }}</option>
+        }
+      </select>
+      <button class="btn-confirmar" (click)="iniciarConfirmacion()" [disabled]="!semanaSeleccionada || isProcesando">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Confirmar semana
+      </button>
+    </div>
+  </div>
+
+  @if (errorGlobal) {
+    <div class="alerta-error">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {{ errorGlobal }}
+    </div>
+  }
+  @if (isProcesando) {
+    <div class="alerta-info"><span class="spinner"></span> Procesando...</div>
+  }
+
+  <!-- ══ LAYOUT PRINCIPAL ════════════════════════════════════ -->
+  <div class="prog-layout">
+
+    <!-- ── IZQUIERDA: tarjetas de esquema ───────────────────── -->
+    <section class="panel-esquemas">
+      <div class="panel-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Esquemas de Horario
+      </div>
+
+      @if (isLoading) { <div class="estado-msg">Cargando...</div> }
+
+      <div class="esquemas-lista">
+        @for (e of esquemas; track e.idEsquema) {
+
+          <div class="esquema-card">
+
+            <!-- Cabecera del esquema -->
+            <div class="esquema-card-top">
+              <span class="esquema-nombre">{{ e.nombre }}</span>
+              <div class="esquema-meta">
+                @if (e.totalHorasNetas) { <span class="badge-horas">{{ e.totalHorasNetas }}/sem</span> }
+                @if (e.toleranciaMinutos) { <span class="badge-tol">Tol. {{ e.toleranciaMinutos }}'</span> }
+                @if (esSemanaPassada()) {
+                  <span class="badge-readonly">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Solo lectura
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- Cuerpo dividido: días | zona de drop -->
+            <div class="esquema-card-body"
+                 [class.drop-hover]="dropTargetId === e.idEsquema && !esSemanaPassada()"
+                 [class.body-readonly]="esSemanaPassada()"
+                 (dragover)="!esSemanaPassada() && onDragOver($event, e.idEsquema)"
+                 (dragleave)="onDragLeave($event, e.idEsquema)"
+                 (drop)="!esSemanaPassada() && onDrop($event, e)">
+
+              <!-- LADO IZQUIERDO: días apilados con estilo individual por fila -->
+              <div class="dias-col">
+                @for (d of getDiasEsquema(e); track d.diaSemana) {
+                  <div class="dia-fila"
+                       [class.dia-sab]="d.diaSemana === 6"
+                       [class.dia-dom]="d.diaSemana === 7">
+                    <span class="dia-abrev">{{ DIAS[d.diaSemana - 1] }}</span>
+                    <span class="dia-rango">{{ d.horaEntrada }} – {{ d.horaSalida }}</span>
+                    @if (d.minutosRefrigerio) {
+                      <span class="dia-refri">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+                        {{ d.minutosRefrigerio }}'
+                      </span>
+                    }
+                  </div>
+                }
+                @if (getDescansos(e)) {
+                  <div class="dia-fila dia-desc">
+                    <span class="dia-abrev">Desc</span>
+                    <span class="dia-rango">{{ getDescansos(e) }}</span>
+                  </div>
+                }
+              </div>
+
+              <!-- LADO DERECHO: grupos asignados + indicador drop -->
+              <div class="grupos-col">
+                @if (dropTargetId === e.idEsquema) {
+                  <div class="drop-indicador">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8cc63f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    Soltar «{{ draggingGrupo?.nombre }}»
+                  </div>
+                }
+
+                @for (g of getGruposDeEsquema(e.idEsquema); track g.idGrupo) {
+                  <div class="grupo-asig-card">
+                    <div class="grupo-asig-top">
+                      <span class="grupo-asig-nombre">{{ g.nombre }}</span>
+                      <div class="grupo-asig-btns">
+                        <button class="btn-mini-ojito" (click)="verMiembros(g, $event)" title="Ver integrantes">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        @if (!esSemanaPassada()) {
+                          <button class="btn-mini-del" (click)="pedirQuitarGrupo(g, e, $event)" title="Quitar grupo">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                    <span class="grupo-asig-count">{{ g.programaciones.length }} miembro{{ g.programaciones.length !== 1 ? 's' : '' }}</span>
+                  </div>
+                }
+
+                @if (!getGruposDeEsquema(e.idEsquema).length && dropTargetId !== e.idEsquema) {
+                  <div class="grupos-col-hint">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    Arrastra un grupo aquí
+                  </div>
+                }
+              </div>
+
+            </div><!-- /esquema-card-body -->
+          </div><!-- /esquema-card -->
+        } @empty {
+          @if (!isLoading) { <div class="estado-msg">No hay esquemas de horario creados.</div> }
+        }
+      </div>
+    </section>
+
+    <!-- ── DERECHA: grupos sin asignar ──────────────────────── -->
+    <aside class="panel-grupos">
+      <div class="panel-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Grupos sin asignar
+      </div>
+      <p class="panel-hint">Arrastra hacia un esquema</p>
+
+      <div class="grupos-lista">
+        @for (g of getGruposSinAsignar(); track g.idGrupo) {
+          <div class="grupo-card"
+               [class.card-dragging]="draggingGrupo?.idGrupo === g.idGrupo"
+               draggable="true"
+               (dragstart)="onDragStart($event, g)"
+               (dragend)="onDragEnd()">
+
+            <div class="grupo-card-header">
+              <div class="grupo-card-meta">
+                <span class="grupo-card-nombre">{{ g.nombre }}</span>
+                @if (g.descripcion) { <span class="grupo-card-desc">{{ g.descripcion }}</span> }
+              </div>
+              <button class="btn-ojito" (click)="verMiembros(g, $event)" title="Ver integrantes">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+
+            <!-- Nombres de trabajadores del grupo -->
+            <div class="grupo-card-miembros">
+              @for (t of g.trabajadores; track t.idTrabajador) {
+                <span class="miembro-tag">{{ nombreCorto(t.nombreCompleto) }}</span>
+              }
+              @empty { <span class="sin-miembros-tag">⚠ Sin miembros</span> }
+            </div>
+
+          </div>
+        } @empty {
+          <div class="estado-msg">
+            @if (isLoading) { Cargando... }
+            @else { ✓ Todos los grupos están asignados. }
+          </div>
+        }
+      </div>
+    </aside>
+
+  </div><!-- /prog-layout -->
+</div><!-- /prog-root -->
+
+
+<!-- ══ MODAL RESULTADO BULK ════════════════════════════════ -->
+@if (mostrarResultado && resultadoBulk) {
+  <div class="modal-overlay" (click)="cerrarResultado()">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Asignación completada</h3>
+        <button class="modal-close" (click)="cerrarResultado()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bulk-ok">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#dcfce7"/><polyline points="8 12 11 15 16 9" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>{{ resultadoBulk.creados }}</strong> trabajadores asignados al esquema <strong>«{{ esquemaNombreBulk }}»</strong>.</span>
+        </div>
+        @if (resultadoBulk.omitidos > 0) {
+          <div class="bulk-warn">
+            ⚠ {{ resultadoBulk.omitidos }} omitido{{ resultadoBulk.omitidos !== 1 ? 's' : '' }} — ya tenían programación esa semana.
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn-guardar" (click)="cerrarResultado()">Aceptar</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL QUITAR GRUPO DE ESQUEMA ═══════════════════════ -->
+@if (mostrarModalEliminarGrupo) {
+  <div class="modal-overlay" (click)="mostrarModalEliminarGrupo = false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Quitar grupo del esquema</h3>
+        <button class="modal-close" (click)="mostrarModalEliminarGrupo = false">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>¿Quitar el grupo <strong>«{{ grupoParaQuitar?.nombre }}»</strong> del esquema <strong>«{{ esquemaParaQuitar?.nombre }}»</strong>?</p>
+        <p class="aviso-quitar">Se eliminarán las {{ getProgramacionesByEsquema(esquemaParaQuitar?.idEsquema).length }} asignaciones de los miembros del grupo para esta semana.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarModalEliminarGrupo = false" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-eliminar" (click)="quitarGrupoDeEsquema()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Quitando...' : 'Sí, quitar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL MIEMBROS (ojito) ══════════════════════════════ -->
+@if (mostrarMiembros && grupoMiembros) {
+  <div class="modal-overlay" (click)="cerrarMiembros()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>{{ grupoMiembros.nombre }}</h3>
+          <span class="modal-sub">{{ grupoMiembros.totalTrabajadores }} integrante{{ grupoMiembros.totalTrabajadores !== 1 ? 's' : '' }}</span>
+        </div>
+        <button class="modal-close" (click)="cerrarMiembros()">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (grupoMiembros.descripcion) { <p class="desc-modal">{{ grupoMiembros.descripcion }}</p> }
+        <div class="miembros-lista">
+          @for (t of grupoMiembros.trabajadores; track t.idTrabajador) {
+            <div class="miembro-row">
+              <div class="m-av">{{ t.nombreCompleto?.charAt(0) }}</div>
+              <div class="m-data">
+                <span class="m-nombre">{{ t.nombreCompleto }}</span>
+                <span class="m-puesto">{{ t.puestoNombre }} — {{ t.areaNombre }}</span>
+              </div>
+              <span class="m-doc">{{ t.nroDocumento }}</span>
+            </div>
+          } @empty { <p class="estado-msg">Sin integrantes.</p> }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL ADVERTENCIA: trabajadores sin grupo (punto 4) ══ -->
+@if (mostrarAdvert) {
+  <div class="modal-overlay">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header modal-header-warn">
+        <div class="warn-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <h3>Trabajadores sin grupo</h3>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p class="warn-texto">Los siguientes <strong>{{ trabSinGrupo.length }}</strong> trabajadores no pertenecen a ningún grupo y quedarán <strong>sin horario asignado</strong> esta semana:</p>
+        <div class="warn-lista">
+          @for (t of trabSinGrupo; track t.idTrabajador) {
+            <div class="warn-item">
+              <div class="m-av m-av-warn">{{ t.nombreCompleto?.charAt(0) }}</div>
+              <div class="m-data">
+                <span class="m-nombre">{{ t.nombreCompleto }}</span>
+                <span class="m-puesto">{{ t.puestoNombre }}</span>
+              </div>
+            </div>
+          }
+        </div>
+        <p class="warn-pregunta">¿Deseas continuar de todos modos?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarAdvert = false">Volver y corregir</button>
+        <button class="btn-warn-cont" (click)="continuarDesdeAdvert()">Continuar de todos modos</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL CONFIRMACIÓN FINAL (punto 5) ══════════════════ -->
+@if (mostrarConfirmacion) {
+  <div class="modal-overlay" (click)="cerrarConfirmacion()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Resumen de la semana</h3>
+          <span class="modal-sub">{{ semanaSeleccionada }}</span>
+        </div>
+        <button class="modal-close" (click)="cerrarConfirmacion()">✕</button>
+      </div>
+      <div class="modal-body">
+        @if (!resumenConfirmacion.length) {
+          <p class="estado-msg">No hay asignaciones registradas para esta semana.</p>
+        } @else {
+          <p class="confirm-intro">La semana tiene las siguientes asignaciones confirmadas:</p>
+          @for (r of resumenConfirmacion; track r.esquema) {
+            <div class="confirm-row">
+              <div class="confirm-esquema">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8cc63f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                {{ r.esquema }}
+              </div>
+              <div class="confirm-grupos">
+                @for (gn of r.grupos; track gn) {
+                  <span class="confirm-tag">{{ gn }}</span>
+                }
+              </div>
+              <span class="confirm-total">{{ r.total }} trabajador{{ r.total !== 1 ? 'es' : '' }}</span>
+            </div>
+          }
+          <div class="confirm-total-global">
+            Total: <strong>{{ resumenConfirmacion.reduce(sumarTotal, 0) }}</strong> asignaciones
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarConfirmacion()" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-confirmar-ok" (click)="ejecutarConfirmacion()" [disabled]="isProcesando || !resumenConfirmacion.length">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {{ isProcesando ? 'Generando pre-registros...' : 'Confirmar y generar pre-registros' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL RESULTADO CONFIRMACIÓN ═══════════════════════ -->
+@if (mostrarResultadoConf && resultadoConfirmacion) {
+  <div class="modal-overlay" (click)="cerrarResultadoConf()">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Pre-registros generados</h3>
+          <span class="modal-sub">{{ resultadoConfirmacion.semanaLabel }}</span>
+        </div>
+        <button class="modal-close" (click)="cerrarResultadoConf()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="conf-resultado-ok">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#dcfce7"/><polyline points="8 12 11 15 16 9" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <p class="conf-r-titulo">Semana confirmada correctamente</p>
+            <p class="conf-r-quincena">Quincena: <strong>{{ resultadoConfirmacion.quincenaDescripcion }}</strong></p>
+          </div>
+        </div>
+
+        <div class="conf-stats">
+          <div class="conf-stat">
+            <span class="conf-stat-n">{{ resultadoConfirmacion.totalTrabajadores }}</span>
+            <span class="conf-stat-l">Trabajadores programados</span>
+          </div>
+          <div class="conf-stat conf-stat-verde">
+            <span class="conf-stat-n">{{ resultadoConfirmacion.preRegistrosCreados }}</span>
+            <span class="conf-stat-l">Pre-registros creados</span>
+          </div>
+          @if (resultadoConfirmacion.preRegistrosOmitidos > 0) {
+            <div class="conf-stat conf-stat-gris">
+              <span class="conf-stat-n">{{ resultadoConfirmacion.preRegistrosOmitidos }}</span>
+              <span class="conf-stat-l">Ya existían (omitidos)</span>
+            </div>
+          }
+        </div>
+
+        <div class="conf-hint">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Los pre-registros están disponibles en <strong>Revisión de Asistencias</strong> bajo la quincena correspondiente.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-guardar" (click)="cerrarResultadoConf()">Entendido</button>
+      </div>
+    </div>
+  </div>
+}

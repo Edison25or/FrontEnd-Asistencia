@@ -1,0 +1,130 @@
+<div class="marcado-screen" (click)="refocus()">
+
+  <!-- COLUMNA IZQUIERDA: Panel de marcado -->
+  <div class="panel-marcado">
+
+    <!-- Logo y cabecera -->
+    <div class="marcado-header">
+      <img src="logo-avendacom.png" alt="Avendacom" class="marcado-logo">
+      <div class="reloj">
+        <div class="hora">{{ horaActual }}</div>
+        <div class="fecha">{{ fechaActual }}</div>
+      </div>
+    </div>
+
+    <!-- Zona de estado -->
+    <div class="zona-estado">
+
+      <!-- ESPERA -->
+      @if (estado === 'ESPERA' || estado === 'PROCESANDO') {
+        <div class="estado-espera" [class.procesando]="estado === 'PROCESANDO'">
+          <div class="icono-scanner">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 5v2M3 19v-2M21 5v2M21 19v-2M7 3h2M7 21h2M15 3h2M15 21h2"/>
+              <rect x="7" y="7" width="10" height="10" rx="1"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+            </svg>
+          </div>
+          @if (estado === 'ESPERA') {
+            <h2>Listo para registrar</h2>
+            <p>Pase su código de barras por el lector</p>
+          } @else {
+            <h2>Procesando...</h2>
+            <p>Por favor espere</p>
+          }
+        </div>
+      }
+
+      <!-- ÉXITO -->
+      @if (estado === 'EXITO' && ultimoRegistro) {
+        <div class="estado-exito" [class.entrada]="ultimoRegistro.accion === 'ENTRADA'" [class.salida]="ultimoRegistro.accion === 'SALIDA'">
+
+          <div class="exito-icono">
+            @if (ultimoRegistro.accion === 'ENTRADA') {
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                <polyline points="10 17 15 12 10 7"/>
+                <line x1="15" y1="12" x2="3" y2="12"/>
+              </svg>
+            } @else {
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            }
+          </div>
+
+          <div class="exito-accion">{{ ultimoRegistro.accion }}</div>
+          <div class="exito-nombre">{{ ultimoRegistro.nombreCompleto }}</div>
+          <div class="exito-puesto">{{ ultimoRegistro.puestoNombre }}</div>
+          <div class="exito-hora">{{ ultimoRegistro.hora }}</div>
+
+          @if (tieneEstadoDiario(ultimoRegistro)) {
+            <div class="exito-estado" [style.background-color]="getColorEstado(ultimoRegistro)">
+              {{ getEtiquetaEstado(ultimoRegistro) }}
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ERROR -->
+      @if (estado === 'ERROR') {
+        <div class="estado-error">
+          <div class="error-icono">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h2>No se pudo registrar</h2>
+          <p>{{ mensajeError }}</p>
+        </div>
+      }
+
+    </div>
+
+    <!-- Input oculto que captura el lector -->
+    <input
+      #codigoInput
+      type="text"
+      class="input-lector"
+      [(ngModel)]="codigoBarras"
+      (keyup.enter)="onCodigoLeido()"
+      autocomplete="off"
+      autofocus
+    >
+
+    <p class="hint-texto">El campo de lectura está activo. Pase el código por el lector.</p>
+
+  </div>
+
+  <!-- COLUMNA DERECHA: Trabajadores en planta -->
+  <div class="panel-planta">
+    <div class="planta-header">
+      <h3>Personal en Planta</h3>
+      <span class="planta-contador">{{ enPlanta.length }}</span>
+    </div>
+
+    <div class="planta-lista">
+      @if (isLoadingPlanta) {
+        <p class="planta-mensaje">Cargando...</p>
+      } @else if (enPlanta.length === 0) {
+        <p class="planta-mensaje">No hay personal registrado aún</p>
+      } @else {
+        @for (r of enPlanta; track r.idTrabajador) {
+          <div class="planta-item">
+            <div class="planta-avatar">{{ r.nombreCompleto?.charAt(0) }}</div>
+            <div class="planta-info">
+              <div class="planta-nombre">{{ r.nombreCompleto }}</div>
+              <div class="planta-puesto">{{ r.puestoNombre }} — {{ r.areaNombre }}</div>
+            </div>
+            <div class="planta-hora">{{ r.horaEntrada }}</div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+</div>

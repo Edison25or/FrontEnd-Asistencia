@@ -1,0 +1,387 @@
+<div class="esquema-container">
+
+  <!-- CABECERA -->
+  <div class="esquema-header">
+    <div>
+      <h2 class="esquema-titulo">Esquemas de Horario</h2>
+      <p class="esquema-subtitulo">Define los horarios variables por día para cada grupo de trabajo</p>
+    </div>
+    @if (esAdmin()) {
+      <button class="btn-nuevo" (click)="abrirModalNuevo()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo Esquema
+      </button>
+    }
+  </div>
+
+  <!-- GRID -->
+  <div class="esquemas-grid">
+    @if (isLoading) {
+      <p class="empty-msg">Cargando esquemas...</p>
+    } @else if (grupos.length === 0) {
+      <p class="empty-msg">No hay esquemas registrados.</p>
+    } @else {
+      @for (g of grupos; track g.grupoNombre) {
+        <div class="esquema-card" [class.card-inactiva]="!g.versionActiva?.activo">
+
+          <div class="card-header">
+            <div>
+              <h3 class="card-nombre">{{ g.grupoNombre }}</h3>
+              <div class="card-badges">
+                <span class="badge-version">v{{ g.versionActiva?.version }}</span>
+                @if (g.versionActiva?.activo) { <span class="badge-activo-sm">Activo</span> }
+                @else                         { <span class="badge-inactivo-sm">Inactivo</span> }
+                @if (g.versiones?.length > 1) { <span class="badge-hist">{{ g.versiones.length }} versiones</span> }
+              </div>
+              @if (g.versionActiva?.descripcion) {
+                <p class="card-desc">{{ g.versionActiva.descripcion }}</p>
+              }
+            </div>
+            <div class="card-acciones">
+              <button class="btn-icon ver" title="Ver historial de versiones" (click)="verDetalle(g)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              @if (esAdmin()) {
+                <button class="btn-icon editar" title="Crear nueva versión" (click)="abrirModalNuevaVersion(g)">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/><path d="M5 5h14"/></svg>
+                </button>
+                <button class="btn-icon eliminar"
+                        [title]="g.versionActiva?.activo ? 'Deshabilitar' : 'Habilitar'"
+                        (click)="confirmarToggle(g.versionActiva)">
+                  @if (g.versionActiva?.activo) {
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                  } @else {
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Mini tabla — Sáb primero, con columna de refrigerio -->
+          <table class="mini-tabla">
+            <thead>
+              <tr>
+                <th>Día</th><th>Entrada</th><th>Salida</th><th>Netas</th><th>Refrig.</th><th>Extra</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of g.versionActiva?.horariosDia; track d.diaSemana) {
+                <tr [class.descanso]="d.esDescanso">
+                  <td class="dia-nombre">{{ d.nombreDia }}</td>
+                  <td>{{ d.esDescanso ? '—' : d.horaEntrada }}</td>
+                  <td>{{ d.esDescanso ? '—' : d.horaSalida }}</td>
+                  <td>{{ d.esDescanso ? '—' : d.horasNetasFormato }}</td>
+                  <td class="td-refri">
+                    @if (!d.esDescanso && d.minutosRefrigerio) {
+                      <span class="chip-refri">🍽 {{ d.minutosRefrigerio }}'</span>
+                    } @else { — }
+                  </td>
+                  <td>{{ d.esDescanso ? '—' : (d.minutosExtraProgramado > 0 ? d.extraFormato : '—') }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="total-label">Total semanal</td>
+                <td class="total-val">{{ g.versionActiva?.totalHorasNetas }}</td>
+                <td>—</td>
+                <td class="total-extra">{{ g.versionActiva?.totalHorasExtra }}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="card-footer">
+            <span class="tolerancia-chip">Tolerancia: {{ g.versionActiva?.toleranciaMinutos }} min</span>
+            <span class="total-bruto">Total bruto: {{ g.versionActiva?.totalHorasBrutas }}</span>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+
+<!-- ══ MODAL CREAR (v1) ════════════════════════════════════ -->
+@if (mostrarModal) {
+  <div class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-box modal-xl" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nuevo Esquema de Horario</h3>
+        <button class="modal-close" (click)="cerrarModal()">✕</button>
+      </div>
+
+      <div class="modal-body" [formGroup]="esquemaForm">
+        @if (errorModal) { <div class="alert-error">{{ errorModal }}</div> }
+
+        <div class="form-row-3">
+          <div class="form-group span-2">
+            <label>Nombre del esquema <span class="req">*</span></label>
+            <input type="text" formControlName="nombre" placeholder="Ej: Turno Mañana">
+            @if (esquemaForm.get('nombre')?.invalid && esquemaForm.get('nombre')?.touched) {
+              <span class="form-error">Requerido</span>
+            }
+          </div>
+          <div class="form-group">
+            <label>Tolerancia (min) <span class="req">*</span></label>
+            <input type="number" formControlName="toleranciaMinutos" min="0" max="60">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" formControlName="descripcion" placeholder="Descripción opcional">
+        </div>
+
+        <div class="dias-grid-wrapper">
+          <table class="dias-table" formArrayName="horariosDia">
+            <thead>
+              <tr>
+                <th>Día</th><th>Descanso</th><th>Entrada</th>
+                <th>Refrigerio (min)</th><th>Horas netas (min)</th><th>Extra (min)</th><th>Salida calculada</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ctrl of horariosDiaArray.controls; track $index; let i = $index) {
+                <tr [formGroupName]="i" [class.row-descanso]="ctrl.get('esDescanso')!.value">
+                  <td class="td-dia">{{ getNombreDia(ctrl.get('diaSemana')!.value) }}</td>
+                  <td class="td-check"><input type="checkbox" formControlName="esDescanso"></td>
+                  <td><input type="time"   formControlName="horaEntrada"            class="input-sm"></td>
+                  <td><input type="number" formControlName="minutosRefrigerio"      class="input-sm input-num" min="0" placeholder="60"></td>
+                  <td><input type="number" formControlName="minutosNetos"           class="input-sm input-num" min="0" placeholder="ej: 636"></td>
+                  <td><input type="number" formControlName="minutosExtraProgramado" class="input-sm input-num" min="0" placeholder="0"></td>
+                  <td class="td-salida">{{ getHoraSalida(i, false) }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="total-label">Total semanal</td>
+                <td class="total-val" [class.total-error]="errorNetosExcedido">{{ formatMin(totalNetos) }}</td>
+                <td class="total-extra" [class.total-warn]="totalExtra > 180">{{ formatMin(totalExtra) }}</td>
+                <td class="total-bruto-sm">{{ formatMin(totalBruto) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Advertencias de horas -->
+        @if (advertenciaNetos) {
+          <div [class]="errorNetosExcedido ? 'alerta-horas-error' : 'alerta-horas-warn'">
+            {{ advertenciaNetos }}
+          </div>
+        }
+        @if (advertenciaExtra) {
+          <div class="alerta-horas-warn">{{ advertenciaExtra }}</div>
+        }
+
+        <p class="hint-tabla">💡 Ingresa los minutos netos del día (ej: 11h 36m = 696 min). La hora de salida se calcula automáticamente.</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModal()" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardar()" [disabled]="isProcesando || errorNetosExcedido">
+          {{ isProcesando ? 'Guardando...' : 'Crear Esquema' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL NUEVA VERSIÓN ═════════════════════════════════ -->
+@if (mostrarModalVersion && grupoParaNuevaVersion && versionForm) {
+  <div class="modal-overlay" (click)="cerrarModalVersion()">
+    <div class="modal-box modal-xl" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Nueva versión — {{ grupoParaNuevaVersion.grupoNombre }}</h3>
+          <span class="modal-sub">v{{ grupoParaNuevaVersion.versionActiva?.version }} actual · La anterior quedará cerrada.</span>
+        </div>
+        <button class="modal-close" (click)="cerrarModalVersion()">✕</button>
+      </div>
+
+      @if (mostrarAdvertVersion) {
+        <div class="advert-programaciones">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Este esquema tiene programaciones activas. Las semanas ya asignadas conservarán la versión anterior.
+        </div>
+      }
+
+      <div class="modal-body" [formGroup]="versionForm">
+        @if (errorModal) { <div class="alert-error">{{ errorModal }}</div> }
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Vigente desde <span class="req">*</span></label>
+            <input type="date" formControlName="vigenteDesde">
+            @if (versionForm.get('vigenteDesde')?.invalid && versionForm.get('vigenteDesde')?.touched) {
+              <span class="form-error">La fecha es obligatoria</span>
+            }
+          </div>
+          <div class="form-group">
+            <label>Tolerancia (min)</label>
+            <input type="number" formControlName="toleranciaMinutos" min="0" max="60">
+          </div>
+          <div class="form-group">
+            <label>Descripción</label>
+            <input type="text" formControlName="descripcion">
+          </div>
+        </div>
+
+        <div class="dias-grid-wrapper">
+          <table class="dias-table" formArrayName="horariosDia">
+            <thead>
+              <tr>
+                <th>Día</th><th>Descanso</th><th>Entrada</th>
+                <th>Refrigerio (min)</th><th>Horas netas (min)</th><th>Extra (min)</th><th>Salida calculada</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ctrl of horariosDiaVersionArray.controls; track $index; let i = $index) {
+                <tr [formGroupName]="i" [class.row-descanso]="ctrl.get('esDescanso')!.value">
+                  <td class="td-dia">{{ getNombreDia(ctrl.get('diaSemana')!.value) }}</td>
+                  <td class="td-check"><input type="checkbox" formControlName="esDescanso"></td>
+                  <td><input type="time"   formControlName="horaEntrada"            class="input-sm"></td>
+                  <td><input type="number" formControlName="minutosRefrigerio"      class="input-sm input-num" min="0"></td>
+                  <td><input type="number" formControlName="minutosNetos"           class="input-sm input-num" min="0"></td>
+                  <td><input type="number" formControlName="minutosExtraProgramado" class="input-sm input-num" min="0"></td>
+                  <td class="td-salida">{{ getHoraSalida(i, true) }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="total-label">Total semanal</td>
+                <td class="total-val" [class.total-error]="errorNetosExcedido">{{ formatMin(totalNetosV) }}</td>
+                <td class="total-extra" [class.total-warn]="totalExtraV > 180">{{ formatMin(totalExtraV) }}</td>
+                <td class="total-bruto-sm">{{ formatMin(totalBrutoV) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        @if (advertenciaNetos) {
+          <div [class]="errorNetosExcedido ? 'alerta-horas-error' : 'alerta-horas-warn'">
+            {{ advertenciaNetos }}
+          </div>
+        }
+        @if (advertenciaExtra) {
+          <div class="alerta-horas-warn">{{ advertenciaExtra }}</div>
+        }
+
+        <p class="hint-tabla">💡 Modifica solo los días que cambian. El resto viene pre-rellenado de la versión actual.</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModalVersion()" [disabled]="isProcesando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardarNuevaVersion()" [disabled]="isProcesando || errorNetosExcedido">
+          {{ isProcesando ? 'Guardando...' : 'Crear nueva versión' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL DETALLE / HISTORIAL ══════════════════════════ -->
+@if (mostrarDetalle && grupoDetalle) {
+  <div class="modal-overlay" (click)="cerrarDetalle()">
+    <div class="modal-box modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>{{ grupoDetalle.grupoNombre }}</h3>
+          <span class="modal-sub">{{ grupoDetalle.versiones?.length }} versión{{ grupoDetalle.versiones?.length !== 1 ? 'es' : '' }}</span>
+        </div>
+        <button class="modal-close" (click)="cerrarDetalle()">✕</button>
+      </div>
+      <div class="modal-body">
+        @for (v of grupoDetalle.versiones; track v.idEsquema) {
+          <div class="version-row" [class.version-activa]="v.vigente" [class.version-cerrada]="!v.vigente">
+
+            <!-- Cabecera de versión: siempre visible, clic para expandir/colapsar -->
+            <button class="version-toggle-btn" (click)="toggleVersion(v.idEsquema)">
+              <div class="version-header">
+                <span class="v-num">v{{ v.version }}</span>
+                @if (v.vigente) { <span class="badge-activo-sm">Activa</span> }
+                @else           { <span class="badge-hist">Cerrada</span> }
+                <span class="v-vigencia">
+                  {{ v.vigenteDesde }}
+                  @if (v.vigenteHasta) { → {{ v.vigenteHasta }} }
+                  @else { → presente }
+                </span>
+                <span class="v-resumen">
+                  Neto {{ v.totalHorasNetas }} · Tol. {{ v.toleranciaMinutos }}'
+                </span>
+              </div>
+              <svg class="chevron" [class.chevron-open]="versionesExpandidas.has(v.idEsquema)"
+                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
+            <!-- Detalle expandible -->
+            @if (versionesExpandidas.has(v.idEsquema)) {
+              <div class="version-detalle">
+                <table class="detalle-tabla">
+                  <thead>
+                    <tr><th>Día</th><th>Entrada</th><th>Refrigerio</th><th>Netas</th><th>Extra</th><th>Salida</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (d of v.horariosDia; track d.diaSemana) {
+                      <tr [class.descanso]="d.esDescanso">
+                        <td class="dia-nombre">{{ d.nombreDia }}</td>
+                        <td>{{ d.esDescanso ? '—' : d.horaEntrada }}</td>
+                        <td>{{ d.esDescanso ? '—' : formatMin(d.minutosRefrigerio) }}</td>
+                        <td>{{ d.esDescanso ? '—' : d.horasNetasFormato }}</td>
+                        <td>{{ d.esDescanso ? '—' : (d.minutosExtraProgramado > 0 ? d.extraFormato : '—') }}</td>
+                        <td><strong>{{ d.esDescanso ? 'DESCANSO' : d.horaSalida }}</strong></td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3" class="total-label">Total semanal</td>
+                      <td class="total-val">{{ v.totalHorasNetas }}</td>
+                      <td class="total-extra">{{ v.totalHorasExtra }}</td>
+                      <td class="total-bruto">Bruto: {{ v.totalHorasBrutas }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+                <div class="detalle-footer">
+                  <span class="tolerancia-chip">Tolerancia: {{ v.toleranciaMinutos }} min</span>
+                </div>
+              </div>
+            }
+
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- ══ MODAL CONFIRM TOGGLE ════════════════════════════════ -->
+@if (mostrarConfirmToggle && esquemaParaToggle) {
+  <div class="modal-overlay" (click)="cerrarConfirmToggle()">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ esquemaParaToggle.activo ? 'Deshabilitar' : 'Habilitar' }} esquema</h3>
+        <button class="modal-close" (click)="cerrarConfirmToggle()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>¿Confirmas {{ esquemaParaToggle.activo ? 'deshabilitar' : 'habilitar' }} el esquema <strong>{{ esquemaParaToggle.nombre }}</strong>?</p>
+        @if (esquemaParaToggle.activo) {
+          <p class="advertencia">Los esquemas deshabilitados no aparecerán en la programación semanal.</p>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarConfirmToggle()">Cancelar</button>
+        <button [class]="esquemaParaToggle.activo ? 'btn-eliminar' : 'btn-guardar'" (click)="procesarToggle()">
+          {{ esquemaParaToggle.activo ? 'Sí, deshabilitar' : 'Sí, habilitar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

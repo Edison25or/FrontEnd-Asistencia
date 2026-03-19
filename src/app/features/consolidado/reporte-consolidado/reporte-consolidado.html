@@ -1,0 +1,256 @@
+<!-- Pantalla normal -->
+<div class="rc-root no-print">
+
+  <!-- CABECERA -->
+  <div class="rc-header">
+    <div>
+      <h2 class="rc-titulo">Reporte de Consolidado</h2>
+      <p class="rc-subtitulo">Vista completa por quincena con exportación a Excel y PDF</p>
+    </div>
+    @if (reporte) {
+      <div class="rc-export-btns">
+        <button class="btn-excel" (click)="exportarExcel()" [disabled]="isExportando">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          Exportar Excel
+        </button>
+        <button class="btn-pdf" (click)="exportarPDF()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Imprimir / PDF
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- FILTROS -->
+  <div class="rc-filtros">
+    <div class="form-group">
+      <label>Quincena</label>
+      <select [(ngModel)]="quincenaSel" class="input-field">
+        <option [ngValue]="null">Selecciona una quincena...</option>
+        @for (q of quincenas; track q.idQuincena) {
+          <option [ngValue]="q.idQuincena">
+            {{ q.descripcion }} ({{ q.estado }})
+          </option>
+        }
+      </select>
+    </div>
+    <button class="btn-buscar" (click)="buscar()" [disabled]="!quincenaSel || isLoadingR">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      {{ isLoadingR ? 'Cargando...' : 'Generar reporte' }}
+    </button>
+    @if (reporte) {
+      <input type="text" [(ngModel)]="filtroNombre" placeholder="Filtrar trabajador..."
+             class="input-field input-filtro">
+    }
+  </div>
+
+  <!-- ESTADO VACÍO -->
+  @if (!buscado) {
+    <div class="rc-hint">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p>Selecciona una quincena y presiona "Generar reporte"</p>
+    </div>
+  }
+
+  @if (isLoadingR) {
+    <div class="rc-hint"><p>Cargando reporte...</p></div>
+  }
+
+  <!-- REPORTE -->
+  @if (reporte && !isLoadingR) {
+    <!-- Resumen de totales -->
+    <div class="rc-totales">
+      <div class="tot-card">
+        <span class="tot-label">Trabajadores</span>
+        <span class="tot-val">{{ reporte.totalTrabajadores }}</span>
+      </div>
+      <div class="tot-card">
+        <span class="tot-label">H. Normales Día</span>
+        <span class="tot-val tot-dia">{{ reporte.totalHNormalesDia }}</span>
+      </div>
+      <div class="tot-card">
+        <span class="tot-label">H. Normales Noche</span>
+        <span class="tot-val tot-noche">{{ reporte.totalHNormalesNoche }}</span>
+      </div>
+      <div class="tot-card">
+        <span class="tot-label">H. Extra Día</span>
+        <span class="tot-val tot-extra">{{ reporte.totalHExtraDia }}</span>
+      </div>
+      <div class="tot-card">
+        <span class="tot-label">H. Extra Noche</span>
+        <span class="tot-val tot-extra tot-noche">{{ reporte.totalHExtraNoche }}</span>
+      </div>
+      <div class="tot-card tot-card-dest">
+        <span class="tot-label">Total General</span>
+        <span class="tot-val">{{ reporte.totalHGeneral }}</span>
+      </div>
+      <div class="tot-card">
+        <span class="tot-label">Faltas</span>
+        <span class="tot-val tot-falta">{{ reporte.totalDiasFalta }} días</span>
+      </div>
+      <div class="tot-card">
+        <span class="tot-label">Permisos</span>
+        <span class="tot-val tot-permiso">{{ reporte.totalDiasPermiso }} días</span>
+      </div>
+    </div>
+
+    <!-- Tabla detallada -->
+    <div class="rc-tabla-wrap">
+      <table class="rc-tabla">
+        <thead>
+          <tr>
+            <th rowspan="2" class="th-left">Trabajador</th>
+            <th colspan="2" class="th-grupo">Horas Normales</th>
+            <th colspan="4" class="th-grupo th-extra">Horas Extra</th>
+            <th rowspan="2">Total Norm.</th>
+            <th rowspan="2">Total Extra</th>
+            <th rowspan="2">Total Gral.</th>
+            <th colspan="2" class="th-grupo th-desc">Ausentismo</th>
+            <th colspan="2" class="th-grupo th-bolsa">Bolsa</th>
+            <th rowspan="2">Otro Bono</th>
+            <th rowspan="2">Estado</th>
+          </tr>
+          <tr>
+            <th class="th-sub">Día</th>
+            <th class="th-sub">Noche</th>
+            <th class="th-sub th-tasa">Extra Día A<br><small>{{ reporte.trabajadores[0]?.tasaA }}%</small></th>
+            <th class="th-sub th-tasa">Extra Noche A<br><small>{{ reporte.trabajadores[0]?.tasaA }}%</small></th>
+            <th class="th-sub th-tasa">Extra Día B<br><small>{{ reporte.trabajadores[0]?.tasaB }}%</small></th>
+            <th class="th-sub th-tasa">Extra Noche B<br><small>{{ reporte.trabajadores[0]?.tasaB }}%</small></th>
+            <th class="th-sub">Faltas</th>
+            <th class="th-sub">Permisos</th>
+            <th class="th-sub">Entrada</th>
+            <th class="th-sub">Salida</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of trabajadoresFiltrados; track t.idTrabajador) {
+            <tr>
+              <td class="td-trab">
+                <div class="trab-n">{{ t.trabajadorNombre }}</div>
+                <div class="trab-p">{{ t.areaNombre }} · {{ t.puestoNombre }}</div>
+              </td>
+              <td class="td-num">{{ t.hNormalesDia }}</td>
+              <td class="td-num td-noche">{{ t.hNormalesNoche }}</td>
+              <td class="td-num td-extra">{{ t.hExtraDiaA }}</td>
+              <td class="td-num td-extra td-noche">{{ t.hExtraNocheA }}</td>
+              <td class="td-num td-extra">{{ t.hExtraDiaB }}</td>
+              <td class="td-num td-extra td-noche">{{ t.hExtraNocheB }}</td>
+              <td class="td-num td-dest">{{ t.hTotalNormales }}</td>
+              <td class="td-num td-dest td-extra">{{ t.hTotalExtra }}</td>
+              <td class="td-num td-dest td-bold">{{ t.hTotalGeneral }}</td>
+              <td class="td-num">
+                @if (t.diasFalta > 0) { <span class="chip-falta">{{ t.diasFalta }}d</span> }
+                @else { — }
+              </td>
+              <td class="td-num">
+                @if (t.diasPermiso > 0) { <span class="chip-perm">{{ t.diasPermiso }}d</span> }
+                @else { — }
+              </td>
+              <td class="td-num td-bolsa" [class.bolsa-neg]="t.bolsaEntrada < 0">
+                {{ t.hBolsaEntrada }}
+              </td>
+              <td class="td-num td-bolsa" [class.bolsa-neg]="t.bolsaSalida < 0">
+                {{ t.hBolsaSalida }}
+              </td>
+              <td class="td-num">
+                @if (t.otroBono > 0) {
+                  <span class="chip-bono" [title]="t.detalleOtroBono">
+                    S/ {{ t.otroBono | number:'1.2-2' }}
+                  </span>
+                } @else { — }
+              </td>
+              <td>
+                <span class="est-badge" [class.est-cerrado]="t.estado === 'CERRADO'"
+                      [class.est-borrador]="t.estado === 'BORRADOR'">
+                  {{ t.estado }}
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+        <!-- Fila de totales -->
+        <tfoot>
+          <tr class="fila-totales">
+            <td class="td-trab"><strong>TOTALES</strong></td>
+            <td class="td-num"><strong>{{ reporte.totalHNormalesDia }}</strong></td>
+            <td class="td-num td-noche"><strong>{{ reporte.totalHNormalesNoche }}</strong></td>
+            <td colspan="4"></td>
+            <td colspan="2"></td>
+            <td class="td-num td-bold"><strong>{{ reporte.totalHGeneral }}</strong></td>
+            <td class="td-num"><strong>{{ reporte.totalDiasFalta }}d</strong></td>
+            <td class="td-num"><strong>{{ reporte.totalDiasPermiso }}d</strong></td>
+            <td colspan="4"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+</div>
+
+
+<!-- ══ VERSIÓN IMPRIMIBLE ══════════════════════════════════ -->
+@if (reporte) {
+  <div class="print-only">
+    <div class="print-header">
+      <h1>Avendaño Trading Company S.A.C.</h1>
+      <h2>Consolidado de Asistencias — {{ reporte.descripcion }}</h2>
+      <p>Período: {{ reporte.fechaInicio }} → {{ reporte.fechaFin }} · Estado: {{ reporte.estado }}</p>
+    </div>
+
+    <!-- Totales impresos -->
+    <div class="print-totales">
+      <span>Trabajadores: <strong>{{ reporte.totalTrabajadores }}</strong></span>
+      <span>H. Norm. Día: <strong>{{ reporte.totalHNormalesDia }}</strong></span>
+      <span>H. Norm. Noche: <strong>{{ reporte.totalHNormalesNoche }}</strong></span>
+      <span>H. Extra Día: <strong>{{ reporte.totalHExtraDia }}</strong></span>
+      <span>H. Extra Noche: <strong>{{ reporte.totalHExtraNoche }}</strong></span>
+      <span>Total General: <strong>{{ reporte.totalHGeneral }}</strong></span>
+    </div>
+
+    <table class="print-tabla">
+      <thead>
+        <tr>
+          <th>Trabajador</th><th>Área</th>
+          <th>H.N. Día</th><th>H.N. Noche</th>
+          <th>H.E. Día A</th><th>H.E. Noche A</th>
+          <th>H.E. Día B</th><th>H.E. Noche B</th>
+          <th>Total</th><th>Faltas</th>
+          <th>Bolsa Ent.</th><th>Bolsa Sal.</th>
+          <th>Otro Bono</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of reporte.trabajadores; track t.idTrabajador) {
+          <tr>
+            <td>{{ t.trabajadorNombre }}</td>
+            <td>{{ t.areaNombre }}</td>
+            <td>{{ t.hNormalesDia }}</td>
+            <td>{{ t.hNormalesNoche }}</td>
+            <td>{{ t.hExtraDiaA }}</td>
+            <td>{{ t.hExtraNocheA }}</td>
+            <td>{{ t.hExtraDiaB }}</td>
+            <td>{{ t.hExtraNocheB }}</td>
+            <td><strong>{{ t.hTotalGeneral }}</strong></td>
+            <td>{{ t.diasFalta }}</td>
+            <td>{{ t.hBolsaEntrada }}</td>
+            <td>{{ t.hBolsaSalida }}</td>
+            <td>{{ t.otroBono > 0 ? 'S/ ' + t.otroBono : '—' }}</td>
+          </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><strong>TOTALES</strong></td><td></td>
+          <td><strong>{{ reporte.totalHNormalesDia }}</strong></td>
+          <td><strong>{{ reporte.totalHNormalesNoche }}</strong></td>
+          <td colspan="4"></td>
+          <td><strong>{{ reporte.totalHGeneral }}</strong></td>
+          <td><strong>{{ reporte.totalDiasFalta }}</strong></td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="print-footer">Generado el {{ hoy() }}</div>
+  </div>
+}
