@@ -14,7 +14,7 @@ export class UsuarioService {
     // El backend espera recibir un mapa/JSON tipo {"rol": "ROLE_ADMIN"} y devuelve un String
     return this.http.put(`${this.apiUrl}/trabajador/${idTrabajador}/rol`, 
       { rol: nuevoRol }, 
-      { responseType: 'text' } // Necesario porque tu Spring Boot devuelve un String, no un JSON en este endpoint
+      { responseType: 'text' } 
     );
   }
 }
