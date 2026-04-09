@@ -1,0 +1,75 @@
+<div class="mi-horario">
+  <h3>Mi Horario</h3>
+
+  @if (cargando) {
+    <div class="mensaje">Cargando horarios...</div>
+  } @else if (error) {
+    <div class="mensaje error">{{ error }}</div>
+  } @else {
+
+    <!-- Semana actual -->
+    <div class="semana-card">
+      <div class="semana-header">
+        <span class="semana-badge actual">Semana actual</span>
+        @if (semanaActual) {
+          <span class="semana-label">{{ semanaActual.label }}</span>
+        }
+      </div>
+
+      @if (semanaActual?.esquema) {
+        <div class="esquema-info">
+          <span class="esquema-nombre">{{ semanaActual!.esquema!.nombre }}</span>
+          <span class="esquema-total">{{ semanaActual!.esquema!.totalHorasNetas }} hrs netas</span>
+        </div>
+        <div class="dias-grid">
+          @for (dia of semanaActual!.esquema!.horariosDia; track dia.diaSemana) {
+            <div class="dia-item" [class.descanso]="dia.esDescanso">
+              <span class="dia-nombre">{{ dia.nombreDia }}</span>
+              @if (dia.esDescanso) {
+                <span class="dia-desc">Descanso</span>
+              } @else {
+                <span class="dia-hora">{{ dia.horaEntrada }} - {{ dia.horaSalida }}</span>
+                <span class="dia-netas">{{ dia.horasNetasFormato }}</span>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="sin-horario">No tienes horario programado esta semana.</div>
+      }
+    </div>
+
+    <!-- Semana siguiente -->
+    <div class="semana-card">
+      <div class="semana-header">
+        <span class="semana-badge siguiente">Próxima semana</span>
+        @if (semanaSiguiente) {
+          <span class="semana-label">{{ semanaSiguiente.label }}</span>
+        }
+      </div>
+
+      @if (semanaSiguiente?.esquema) {
+        <div class="esquema-info">
+          <span class="esquema-nombre">{{ semanaSiguiente!.esquema!.nombre }}</span>
+          <span class="esquema-total">{{ semanaSiguiente!.esquema!.totalHorasNetas }} hrs netas</span>
+        </div>
+        <div class="dias-grid">
+          @for (dia of semanaSiguiente!.esquema!.horariosDia; track dia.diaSemana) {
+            <div class="dia-item" [class.descanso]="dia.esDescanso">
+              <span class="dia-nombre">{{ dia.nombreDia }}</span>
+              @if (dia.esDescanso) {
+                <span class="dia-desc">Descanso</span>
+              } @else {
+                <span class="dia-hora">{{ dia.horaEntrada }} - {{ dia.horaSalida }}</span>
+                <span class="dia-netas">{{ dia.horasNetasFormato }}</span>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="sin-horario">Aún no se ha programado la próxima semana.</div>
+      }
+    </div>
+
+  }
+</div>

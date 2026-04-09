@@ -56,7 +56,7 @@ export class MarcadoComponent implements OnInit, OnDestroy {
 
   cargarEnPlanta() {
     this.isLoadingPlanta = true;
-    this.asistenciaService.getEnPlanta().subscribe({
+    this.asistenciaService.getEnPlantaPublica().subscribe({
       next:  (data) => { this.enPlanta = data; this.isLoadingPlanta = false; this.cdr.detectChanges(); },
       error: ()     => { this.isLoadingPlanta = false; this.cdr.detectChanges(); }
     });
@@ -115,19 +115,21 @@ export class MarcadoComponent implements OnInit, OnDestroy {
 
   getColorEstado(registro: any): string {
     switch (this.getEstadoDiario(registro)) {
-      case 'A_TIEMPO': return '#16a34a';
-      case 'TARDE':    return '#d97706';
-      case 'FALTA':    return '#dc2626';
-      default:         return '#64748b';
+      case 'A_TIEMPO':       return '#16a34a';
+      case 'TARDE':          return '#d97706';
+      case 'FALTA':          return '#dc2626';
+      case 'NO_PROGRAMADO':  return '#6366f1';
+      default:               return '#64748b';
     }
   }
 
   getEtiquetaEstado(registro: any): string {
     switch (this.getEstadoDiario(registro)) {
-      case 'A_TIEMPO': return '✓ A TIEMPO';
-      case 'TARDE':    return '⚠ TARDE';
-      case 'FALTA':    return '✗ FALTA';
-      default:         return '';  // sin estado = no mostrar badge
+      case 'A_TIEMPO':       return '✓ A TIEMPO';
+      case 'TARDE':          return '⚠ TARDE';
+      case 'FALTA':          return '✗ FALTA';
+      case 'NO_PROGRAMADO':  return 'ℹ NO PROGRAMADO';
+      default:               return '';
     }
   }
 

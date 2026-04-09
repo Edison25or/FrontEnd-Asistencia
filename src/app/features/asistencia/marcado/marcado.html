@@ -113,7 +113,7 @@
       } @else if (enPlanta.length === 0) {
         <p class="planta-mensaje">No hay personal registrado aún</p>
       } @else {
-        @for (r of enPlanta; track r.idTrabajador) {
+        @for (r of enPlanta; track r.nombreCompleto) {
           <div class="planta-item">
             <div class="planta-avatar">{{ r.nombreCompleto?.charAt(0) }}</div>
             <div class="planta-info">

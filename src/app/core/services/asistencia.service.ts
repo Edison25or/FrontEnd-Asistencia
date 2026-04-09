@@ -16,7 +16,12 @@ export class AsistenciaService {
     return this.http.post<any>(`${this.apiUrl}/marcar`, {}, { params });
   }
 
-  // Trabajadores actualmente en planta
+  // Público — panel de kiosco (sin datos sensibles)
+  getEnPlantaPublica(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/en-planta-publica`);
+  }
+
+  // Protegido — trabajadores en planta (solo dashboard)
   getEnPlanta(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/en-planta`);
   }

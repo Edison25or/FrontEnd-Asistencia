@@ -1,0 +1,93 @@
+<div class="mi-consolidado">
+  <h3>Mi Consolidado</h3>
+
+  @if (cargando) {
+    <div class="mensaje">Cargando quincenas...</div>
+  } @else if (quincenas.length === 0) {
+    <div class="mensaje">No hay quincenas cerradas disponibles.</div>
+  } @else {
+    <div class="quincenas-lista">
+      @for (q of quincenas; track q.idQuincena) {
+        <div class="quincena-card" [class.seleccionada]="quincenaSeleccionada === q.idQuincena"
+             (click)="seleccionarQuincena(q.idQuincena)">
+          <div class="quincena-info">
+            <span class="quincena-desc">{{ q.descripcion }}</span>
+            <span class="quincena-periodo">{{ q.fechaInicio }} → {{ q.fechaFin }}</span>
+          </div>
+          <svg class="quincena-chevron" [class.abierto]="quincenaSeleccionada === q.idQuincena"
+               width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        @if (quincenaSeleccionada === q.idQuincena) {
+          <div class="detalle-panel">
+            @if (cargandoDetalle) {
+              <div class="mensaje-sm">Cargando detalle...</div>
+            } @else if (!detalle) {
+              <div class="mensaje-sm">No se encontró consolidado para esta quincena.</div>
+            } @else {
+              <div class="detalle-grid">
+                <div class="detalle-seccion">
+                  <h4>Horas normales</h4>
+                  <div class="detalle-fila">
+                    <span>Diurnas</span><strong>{{ detalle.hNormalesDia }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Nocturnas</span><strong>{{ detalle.hNormalesNoche }}</strong>
+                  </div>
+                  <div class="detalle-fila total">
+                    <span>Total normales</span><strong>{{ detalle.hTotalNormales }}</strong>
+                  </div>
+                </div>
+
+                <div class="detalle-seccion">
+                  <h4>Horas extra</h4>
+                  <div class="detalle-fila">
+                    <span>Diurnas (25%)</span><strong>{{ detalle.hExtraDiaA }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Nocturnas (25%)</span><strong>{{ detalle.hExtraNocheA }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Diurnas (35%)</span><strong>{{ detalle.hExtraDiaB }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Nocturnas (35%)</span><strong>{{ detalle.hExtraNocheB }}</strong>
+                  </div>
+                  <div class="detalle-fila total">
+                    <span>Total extra</span><strong>{{ detalle.hTotalExtra }}</strong>
+                  </div>
+                </div>
+
+                <div class="detalle-seccion">
+                  <h4>Resumen</h4>
+                  <div class="detalle-fila">
+                    <span>Faltas</span><strong>{{ detalle.diasFalta }} días</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Permisos</span><strong>{{ detalle.diasPermiso }} días</strong>
+                  </div>
+                  <div class="detalle-fila total destacado">
+                    <span>Total general</span><strong>{{ detalle.hTotalGeneral }}</strong>
+                  </div>
+                </div>
+
+                <div class="detalle-seccion">
+                  <h4>Bolsa de horas</h4>
+                  <div class="detalle-fila">
+                    <span>Entrada</span><strong>{{ detalle.hBolsaEntrada }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Salida</span><strong>{{ detalle.hBolsaSalida }}</strong>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+</div>

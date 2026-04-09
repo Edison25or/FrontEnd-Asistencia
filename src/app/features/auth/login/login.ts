@@ -39,32 +39,21 @@ export class LoginComponent {
       next: () => {
         this.authService.getUsuarioInfo().subscribe({
           next: (info) => {
-            // Bloquear acceso a trabajadores sin rol de gestión
-            if (info.rol === 'ROLE_TRABAJADOR') {
-              this.authService.logout();
-              this.errorMessage = 'No tienes permisos para acceder al sistema. Contacta al Administrador.';
-              this.isLoading    = false;
-              this.cdr.detectChanges();
-              return;
-            }
-
             this.loginSuccess = true;
             this.isLoading    = false;
             this.errorMessage = '';
             this.cdr.detectChanges();
+
             setTimeout(() => {
-              if (info.debeCambiarPassword) {
-                this.router.navigate(['/dashboard'], { state: { forzarCambioPassword: true } });
-              } else {
-                this.router.navigate(['/dashboard']);
-              }
+              const destino = this.resolverDestino(info.rol, info.debeCambiarPassword);
+              this.router.navigate([destino.ruta], { state: destino.state });
             }, 2500);
           },
           error: () => {
             this.loginSuccess = true;
             this.isLoading    = false;
             this.cdr.detectChanges();
-            setTimeout(() => this.router.navigate(['/dashboard']), 2500);
+            setTimeout(() => this.router.navigate(['/seleccionar-rol']), 2500);
           }
         });
       },
@@ -74,6 +63,34 @@ export class LoginComponent {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  /**
+   * Determina a dónde redirigir después del login según rol y estado de contraseña.
+   *
+   * Flujo:
+   * - TRABAJADOR → mi-portal (con flag de contraseña si aplica)
+   * - Otros roles → seleccionar-rol (con flag de contraseña si aplica)
+   *   - Si debe cambiar contraseña, el destino final maneja el modal obligatorio
+   */
+  private resolverDestino(rol: string, debeCambiarPassword: boolean): { ruta: string; state: any } {
+    if (rol === 'ROLE_TRABAJADOR') {
+      return {
+        ruta: '/mi-portal',
+        state: debeCambiarPassword ? { forzarCambioPassword: true } : {}
+      };
+    }
+
+    // Roles superiores: si debe cambiar contraseña, ir directo al portal del trabajador
+    // (el modal obligatorio se abrirá ahí), luego podrán elegir vista
+    if (debeCambiarPassword) {
+      return {
+        ruta: '/mi-portal',
+        state: { forzarCambioPassword: true }
+      };
+    }
+
+    return { ruta: '/seleccionar-rol', state: {} };
   }
 
   // ── Modal informativo "¿Olvidaste tu clave?" ───────────────

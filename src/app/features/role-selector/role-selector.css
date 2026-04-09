@@ -1,0 +1,139 @@
+.selector-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f0;
+  padding: 2rem;
+}
+
+.selector-card {
+  background: #0f172a;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  padding: 3rem;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+}
+
+.selector-logo {
+  height: 100px;
+  margin-bottom: 1.5rem;
+}
+
+.selector-saludo {
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #8cc63f;
+  margin: 0 0 0.25rem;
+}
+
+.selector-subtitulo {
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-size: 0.8rem;
+  color: #ffffff;
+  margin: 0 0 2rem;
+}
+
+.cargando {
+  color: #999;
+  padding: 2rem 0;
+}
+
+.opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.opcion-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.opcion-card:hover {
+  border-color: #8cc63f;
+  box-shadow: 0 2px 12px rgba(140,198,63,0.15);
+  transform: translateY(-1px);
+}
+
+.opcion-icono {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.opcion-rol .opcion-icono {
+  background: #eef6e5;
+  color: #8cc63f
+  ;
+}
+
+.opcion-trabajador .opcion-icono {
+  background: #e8f4fd;
+  color: #8cc63f;
+}
+
+.opcion-texto {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.opcion-titulo {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.opcion-desc {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.opcion-flecha {
+  flex-shrink: 0;
+  color: #ccc;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.opcion-card:hover .opcion-flecha {
+  color: #8cc63f;
+  transform: translateX(3px);
+}
+
+.btn-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  color: #e53e3e;
+  background: #eed0d0;
+}

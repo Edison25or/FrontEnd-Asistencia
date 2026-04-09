@@ -1,0 +1,41 @@
+.mi-consolidado h3 { font-size: 1.3rem; font-weight: 600; color: #1a1a1a; margin-bottom: 1.25rem; }
+.mensaje { text-align: center; padding: 3rem; color: #888; }
+.mensaje-sm { text-align: center; padding: 1.5rem; color: #999; font-size: 0.9rem; }
+
+.quincenas-lista { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.quincena-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.25rem; background: #fff; border: 1px solid #f0f0f0;
+  border-radius: 12px; cursor: pointer; transition: all 0.2s;
+}
+.quincena-card:hover { border-color: #8cc63f; }
+.quincena-card.seleccionada { border-color: #8cc63f; background: #fafff5; }
+
+.quincena-info { display: flex; flex-direction: column; gap: 0.15rem; }
+.quincena-desc { font-weight: 600; font-size: 0.95rem; color: #1a1a1a; }
+.quincena-periodo { font-size: 0.8rem; color: #888; }
+
+.quincena-chevron { color: #ccc; transition: transform 0.2s; }
+.quincena-chevron.abierto { transform: rotate(180deg); color: #8cc63f; }
+
+.detalle-panel {
+  background: #fff; border: 1px solid #e8e8e8; border-top: none;
+  border-radius: 0 0 12px 12px; padding: 1.25rem 1.5rem;
+  margin-top: -0.5rem; margin-bottom: 0.5rem;
+}
+
+.detalle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+.detalle-seccion h4 {
+  font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #888; margin-bottom: 0.5rem; font-weight: 700;
+}
+
+.detalle-fila {
+  display: flex; justify-content: space-between; padding: 0.3rem 0;
+  font-size: 0.9rem; color: #555;
+}
+.detalle-fila strong { color: #1a1a1a; }
+.detalle-fila.total { border-top: 1px solid #eee; margin-top: 0.25rem; padding-top: 0.5rem; }
+.detalle-fila.destacado strong { color: #8cc63f; font-size: 1.05rem; }

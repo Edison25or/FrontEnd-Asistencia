@@ -1,0 +1,183 @@
+<div class="worker-container" (click)="cerrarMenu()">
+
+  <aside class="worker-sidebar">
+    <div class="sidebar-header">
+      <img src="logo-avendacom.png" alt="Avendacom" class="sidebar-logo">
+      
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul>
+        <li>
+          <a routerLink="/mi-portal/asistencia" routerLinkActive="active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+            Mi Asistencia
+          </a>
+        </li>
+        <li>
+          <a routerLink="/mi-portal/horario" routerLinkActive="active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Mi Horario
+          </a>
+        </li>
+        <li>
+          <a routerLink="/mi-portal/consolidado" routerLinkActive="active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            Mi Consolidado
+          </a>
+        </li>
+        <li>
+          <a routerLink="/mi-portal/bolsa" routerLinkActive="active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M5.5 17.5 A7 7 0 0 0 12 19"/></svg>
+            Bolsa de Horas
+          </a>
+        </li>
+        <li>
+          <a routerLink="/mi-portal/perfil" routerLinkActive="active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Mi Perfil
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      @if (tieneRolSuperior) {
+        <button class="btn-cambiar-vista" (click)="volverASelector()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Cambiar de vista
+        </button>
+      }
+      <button (click)="logout()" class="btn-logout">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar Sesión
+      </button>
+    </div>
+  </aside>
+
+  <main class="worker-main">
+    <header class="worker-navbar">
+      <h2 class="page-title">Mi Portal</h2>
+
+      <div class="user-profile" (click)="$event.stopPropagation()">
+        @if (!cargando) {
+          <button class="user-btn" (click)="toggleMenu()" [class.abierto]="menuAbierto">
+            <div class="user-info">
+              <span class="user-name">{{ userName }}</span>
+              <span class="user-role">Trabajador</span>
+            </div>
+            <div class="user-avatar">{{ userName.charAt(0).toUpperCase() }}</div>
+          </button>
+
+          @if (menuAbierto) {
+            <div class="user-dropdown">
+              <div class="dropdown-header">
+                <span class="dropdown-nombre">{{ userName }}</span>
+                <span class="dropdown-email">{{ userEmail }}</span>
+              </div>
+              <hr class="dropdown-divider">
+              <button class="dropdown-item" (click)="abrirModalPassword()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Cambiar contraseña
+              </button>
+              <hr class="dropdown-divider">
+              <button class="dropdown-item dropdown-logout" (click)="logout()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Cerrar sesión
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </header>
+
+    <section class="content-area">
+      <router-outlet></router-outlet>
+    </section>
+  </main>
+
+</div>
+
+<!-- Reuso del modal de cambio de contraseña (mismo que el dashboard admin) -->
+@if (mostrarModalPassword) {
+  <div class="modal-overlay" (click)="cerrarModalPassword()">
+    <div class="modal-password" (click)="$event.stopPropagation()" [formGroup]="passwordForm">
+
+      @if (esCambioObligatorio) {
+        <div class="banner-obligatorio">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Tu contraseña es temporal. Debes cambiarla para continuar.
+        </div>
+      }
+
+      @if (!esCambioObligatorio) {
+        <button class="modal-close" (click)="cerrarModalPassword()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      }
+
+      @if (!passwordExito) {
+        <div class="modal-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8cc63f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="modal-header-text">
+          <h3>Cambiar contraseña</h3>
+          <p>Ingresa tu contraseña actual y elige una nueva.</p>
+        </div>
+
+        <div class="pwd-group">
+          <label>Contraseña actual</label>
+          <div class="input-wrapper">
+            <input [type]="showActual ? 'text' : 'password'" formControlName="passwordActual" placeholder="••••••••">
+            <button type="button" class="toggle-eye" (click)="showActual = !showActual">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="pwd-group">
+          <label>Nueva contraseña</label>
+          <div class="input-wrapper">
+            <input [type]="showNueva ? 'text' : 'password'" formControlName="passwordNueva" placeholder="Mínimo 10 caracteres">
+            <button type="button" class="toggle-eye" (click)="showNueva = !showNueva">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <span class="field-error" *ngIf="passwordForm.get('passwordNueva')?.errors?.['pattern'] && passwordForm.get('passwordNueva')?.touched">
+            10-20 caracteres, mayúscula, minúscula, número y carácter especial.
+          </span>
+        </div>
+
+        <div class="pwd-group">
+          <label>Confirmar nueva contraseña</label>
+          <div class="input-wrapper">
+            <input [type]="showConfirmar ? 'text' : 'password'" formControlName="confirmar" placeholder="Repite la nueva contraseña">
+            <button type="button" class="toggle-eye" (click)="showConfirmar = !showConfirmar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <span class="field-error" *ngIf="passwordForm.errors?.['noCoincide'] && passwordForm.get('confirmar')?.touched">
+            Las contraseñas no coinciden.
+          </span>
+        </div>
+
+        <div *ngIf="passwordError" class="error-msg">{{ passwordError }}</div>
+
+        <button class="btn-guardar" (click)="guardarPassword()" [disabled]="passwordCargando">
+          {{ passwordCargando ? 'Guardando...' : 'Guardar nueva contraseña' }}
+        </button>
+      }
+
+      @if (passwordExito) {
+        <div class="success-icon-wrapper">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8cc63f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="modal-header-text">
+          <h3>¡Contraseña actualizada!</h3>
+          <p>Tu nueva contraseña ha sido guardada correctamente.</p>
+        </div>
+      }
+
+    </div>
+  </div>
+}

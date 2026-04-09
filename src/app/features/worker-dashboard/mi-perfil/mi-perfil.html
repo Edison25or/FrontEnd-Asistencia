@@ -1,0 +1,121 @@
+<div class="mi-perfil">
+  <h3>Mi Perfil</h3>
+
+  @if (cargando) {
+    <div class="mensaje">Cargando perfil...</div>
+  } @else if (!perfil) {
+    <div class="mensaje">No se pudo cargar tu información.</div>
+  } @else {
+
+    @if (mensaje) {
+      <div class="alerta" [class.alerta-ok]="mensajeTipo === 'ok'" [class.alerta-error]="mensajeTipo === 'error'">
+        {{ mensaje }}
+      </div>
+    }
+
+    <!-- Datos de solo lectura -->
+    <div class="seccion-card">
+      <h4>Información personal</h4>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Nombre completo</span>
+          <span class="info-valor">{{ perfil.pNombre }} {{ perfil.sNombre }} {{ perfil.aPaterno }} {{ perfil.aMaterno }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Documento</span>
+          <span class="info-valor">{{ perfil.docIdentidad }} {{ perfil.nroDocumento }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Correo electrónico</span>
+          <span class="info-valor">{{ perfil.email }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Fecha de nacimiento</span>
+          <span class="info-valor">{{ perfil.fechaNac }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Área</span>
+          <span class="info-valor">{{ perfil.areaNombre }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Puesto</span>
+          <span class="info-valor">{{ perfil.puestoNombre }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Datos editables -->
+    <div class="seccion-card">
+      <div class="seccion-header">
+        <h4>Datos de contacto</h4>
+        @if (!editando) {
+          <button class="btn-editar" (click)="toggleEdicion()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+        }
+      </div>
+
+      @if (!editando) {
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Teléfono</span>
+            <span class="info-valor">{{ perfil.telefono || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Dirección</span>
+            <span class="info-valor">{{ perfil.direccion || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Contacto de emergencia</span>
+            <span class="info-valor">{{ perfil.contactoEmergencias || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Nro. contacto emergencia</span>
+            <span class="info-valor">{{ perfil.nroContacto || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Parentesco</span>
+            <span class="info-valor">{{ perfil.parentesco || '—' }}</span>
+          </div>
+        </div>
+      } @else {
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="text" [(ngModel)]="form.telefono" placeholder="Ej: 987654321" maxlength="20">
+          </div>
+          <div class="form-group full">
+            <label>Dirección</label>
+            <input type="text" [(ngModel)]="form.direccion" placeholder="Tu dirección" maxlength="255">
+          </div>
+          <div class="form-group">
+            <label>Contacto de emergencia</label>
+            <input type="text" [(ngModel)]="form.contactoEmergencias" placeholder="Nombre del contacto" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>Nro. contacto emergencia</label>
+            <input type="text" [(ngModel)]="form.nroContacto" placeholder="Ej: 987654321" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label>Parentesco</label>
+            <select [(ngModel)]="form.parentesco">
+              <option value="">Sin especificar</option>
+              @for (p of parentescos; track p.value) {
+                <option [value]="p.value">{{ p.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-acciones">
+          <button class="btn-cancelar" (click)="toggleEdicion()">Cancelar</button>
+          <button class="btn-guardar" (click)="guardar()" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
+          </button>
+        </div>
+      }
+    </div>
+
+  }
+</div>

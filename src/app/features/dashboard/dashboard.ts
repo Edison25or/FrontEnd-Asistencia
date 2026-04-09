@@ -163,6 +163,7 @@ export class DashboardComponent implements OnInit {
     const mapa: Record<string, string> = {
       'ROLE_SUPERADMIN': 'Súper Administrador',
       'ROLE_ADMIN':      'Administrador',
+      'ROLE_JEFE':       'Jefe',
       'ROLE_SUPERVISOR': 'Supervisor',
       'ROLE_TRABAJADOR': 'Trabajador',
     };

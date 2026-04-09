@@ -1,0 +1,65 @@
+.mi-perfil h3 { font-size: 1.3rem; font-weight: 600; color: #1a1a1a; margin-bottom: 1.25rem; }
+.mensaje { text-align: center; padding: 3rem; color: #888; }
+
+.alerta {
+  padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.9rem;
+  font-weight: 500; margin-bottom: 1rem;
+}
+.alerta-ok    { background: #e8f5e9; color: #2e7d32; }
+.alerta-error { background: #fce4ec; color: #c62828; }
+
+.seccion-card {
+  background: #fff; border: 1px solid #f0f0f0; border-radius: 14px;
+  padding: 1.5rem; margin-bottom: 1.25rem;
+}
+.seccion-card h4 {
+  font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #888; margin-bottom: 1rem; font-weight: 700;
+}
+
+.seccion-header { display: flex; justify-content: space-between; align-items: center; }
+.btn-editar {
+  display: flex; align-items: center; gap: 0.4rem;
+  background: none; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 0.4rem 0.8rem; font-size: 0.85rem; color: #555;
+  cursor: pointer; transition: all 0.2s; font-weight: 500;
+}
+.btn-editar:hover { border-color: #8cc63f; color: #5a8a2a; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.info-item { display: flex; flex-direction: column; gap: 0.15rem; }
+.info-label { font-size: 0.78rem; color: #999; text-transform: uppercase; letter-spacing: 0.03em; }
+.info-valor { font-size: 0.95rem; color: #1a1a1a; font-weight: 500; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 0.85rem; font-weight: 600; color: #444; }
+.form-group input, .form-group select {
+  padding: 0.65rem 0.85rem; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 0.9rem; background: #fafafa; transition: all 0.2s;
+  outline: none; color: #1a1a1a;
+}
+.form-group input:focus, .form-group select:focus {
+  border-color: #8cc63f; background: #fff;
+  box-shadow: 0 0 0 3px rgba(140,198,63,0.15);
+}
+
+.form-acciones {
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f0f0f0;
+}
+.btn-cancelar {
+  padding: 0.6rem 1.25rem; border: 1px solid #ddd; border-radius: 8px;
+  background: #fff; color: #555; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-cancelar:hover { border-color: #999; color: #333; }
+
+.btn-guardar {
+  padding: 0.6rem 1.25rem; border: none; border-radius: 8px;
+  background: #8cc63f; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-guardar:hover:not(:disabled) { background: #7bb332; }
+.btn-guardar:disabled { background: #ccc; cursor: not-allowed; }

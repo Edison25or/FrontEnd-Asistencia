@@ -1,0 +1,40 @@
+.mi-asistencia h3 { font-size: 1.3rem; font-weight: 600; color: #1a1a1a; margin-bottom: 1rem; }
+
+.chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.chip {
+  padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid #e0e0e0;
+  background: #fff; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+  color: #555; font-weight: 500;
+}
+.chip:hover { border-color: #8cc63f; color: #5a8a2a; }
+.chip.activo { background: #8cc63f; color: #fff; border-color: #8cc63f; }
+
+.mensaje { text-align: center; padding: 3rem 1rem; color: #888; font-size: 0.95rem; }
+.mensaje.error { color: #dc2626; }
+
+.lista { display: flex; flex-direction: column; gap: 0.75rem; }
+.registro-card {
+  display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem;
+  background: #fff; border: 1px solid #f0f0f0; border-radius: 12px;
+  transition: box-shadow 0.2s;
+}
+.registro-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+.registro-fecha { display: flex; flex-direction: column; min-width: 110px; }
+.dia-semana { font-weight: 600; font-size: 0.9rem; color: #1a1a1a; }
+.fecha { font-size: 0.8rem; color: #888; }
+
+.registro-horas { display: flex; gap: 1.5rem; flex: 1; }
+.hora-item { display: flex; flex-direction: column; }
+.hora-label { font-size: 0.75rem; color: #999; text-transform: uppercase; letter-spacing: 0.03em; }
+.hora-valor { font-size: 1rem; font-weight: 600; color: #333; }
+
+.badge {
+  padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+  white-space: nowrap;
+}
+.estado-ok          { background: #e8f5e9; color: #2e7d32; }
+.estado-tarde       { background: #fff8e1; color: #f57f17; }
+.estado-falta       { background: #fce4ec; color: #c62828; }
+.estado-justificado { background: #e3f2fd; color: #1565c0; }
+.estado-pendiente   { background: #f5f5f5; color: #757575; }

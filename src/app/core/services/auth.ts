@@ -4,7 +4,7 @@ import { Observable, tap } from 'rxjs';
 
 export interface LoginRequest  { username: string; password: string; }
 export interface LoginResponse { token: string; }
-export interface UsuarioInfo   { nombre: string; rol: string; email: string; debeCambiarPassword: boolean; }
+export interface UsuarioInfo   { nombre: string; rol: string; email: string; debeCambiarPassword: boolean; idTrabajador?: number; }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -31,11 +31,23 @@ export class AuthService {
   }
 
   getToken(): string | null { return localStorage.getItem('auth_token'); }
-  logout(): void { localStorage.removeItem('auth_token'); }
 
-  // ✅ Corregido: usa baseUrl, no apiUrl
   getUsuarioInfo(): Observable<UsuarioInfo> {
-    return this.http.get<UsuarioInfo>(`${this.baseUrl}/usuarios/me`);
+    return this.http.get<UsuarioInfo>(`${this.baseUrl}/usuarios/me`).pipe(
+      tap(info => {
+        if (info.idTrabajador) localStorage.setItem('id_trabajador', String(info.idTrabajador));
+      })
+    );
+  }
+
+  getIdTrabajador(): number | null {
+    const id = localStorage.getItem('id_trabajador');
+    return id ? Number(id) : null;
+  }
+
+  logout(): void {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('id_trabajador');
   }
 
   getRolUsuario(): string | null {

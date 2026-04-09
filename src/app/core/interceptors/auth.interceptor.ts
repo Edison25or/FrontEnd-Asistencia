@@ -4,16 +4,34 @@ import { Router } from '@angular/router';
 import { catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
+/**
+ * Endpoints públicos que NUNCA deben llevar token.
+ * Esto evita que un token almacenado en localStorage se exponga
+ * en la pantalla de marcado (kiosco compartido).
+ */
+const PUBLIC_ENDPOINTS = [
+  '/auth/login',
+  '/auth/recuperar-password',
+  '/asistencia/marcar',
+  '/asistencia/en-planta-publica',
+  '/maestros/generos',
+  '/maestros/areas',
+];
+
+function isPublicRequest(url: string): boolean {
+  return PUBLIC_ENDPOINTS.some(ep => url.includes(ep));
+}
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem('auth_token');
   const router = inject(Router);
 
-  // 1. REGLA DE ORO: Si la petición es para hacer login, la dejamos pasar LIMPIA (sin token)
-  if (req.url.includes('/login')) {
+  // 1. Endpoints públicos: NUNCA adjuntar token (seguridad de kiosco)
+  if (isPublicRequest(req.url)) {
     return next(req);
   }
 
-  // 2. Si no es login y tenemos token, se lo inyectamos
+  // 2. Endpoints protegidos: adjuntar token si existe
   let authReq = req;
   if (token) {
     authReq = req.clone({
@@ -21,23 +39,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     });
   }
 
-  // 3. Enviamos la petición y "escuchamos" la respuesta del backend
+  // 3. Manejar errores de autenticación
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Si Spring Boot nos dice 401 (No Autorizado) o 403 (Prohibido)
-      // POR ESTO:
       if (error.status === 401) {
-        console.warn('El token ha vencido o es inválido. Cerrando sesión automáticamente...');
-        localStorage.removeItem('token');
+        console.warn('Token vencido o inválido. Cerrando sesión...');
+        localStorage.removeItem('auth_token');
         router.navigate(['/login']);
       }
-      
-      // Opcional: Puedes agregar un bloque para el 403 y solo mostrar un mensaje en consola
+
       if (error.status === 403) {
-         console.error('Error 403: No tienes los permisos suficientes para ver esta información.');
+        console.error('Error 403: Permisos insuficientes.');
       }
-      
-      // Dejamos que el error siga su camino por si otro componente quiere leerlo
+
       return throwError(() => error);
     })
   );

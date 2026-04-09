@@ -19,6 +19,10 @@ export class ConsolidadoService {
     return this.http.get<any[]>(`${this.api}/${idQuincena}`);
   }
 
+  getConsolidadoTrabajador(idQuincena: number, idTrabajador: number): Observable<any> {
+    return this.http.get<any>(`${this.api}/${idQuincena}/trabajador/${idTrabajador}`);
+  }
+
   editar(idConsolidado: number, payload: {
     otroBono?: number; detalleOtroBono?: string; observaciones?: string;
   }): Observable<any> {

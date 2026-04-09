@@ -10,6 +10,46 @@ export const routes: Routes = [
     path: 'marcado',
     loadComponent: () => import('./features/asistencia/marcado/marcado').then(m => m.MarcadoComponent)
   },
+
+  // ── Selector de rol (para roles superiores a TRABAJADOR) ──
+  {
+    path: 'seleccionar-rol',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/role-selector/role-selector').then(m => m.RoleSelectorComponent)
+  },
+
+  // ── Portal del Trabajador (accesible por TODOS los roles) ─
+  // Cada componente solo muestra datos del usuario autenticado
+  {
+    path: 'mi-portal',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/worker-dashboard/worker-dashboard').then(m => m.WorkerDashboardComponent),
+    children: [
+      {
+        path: 'asistencia',
+        loadComponent: () => import('./features/worker-dashboard/mi-asistencia/mi-asistencia').then(m => m.MiAsistenciaComponent)
+      },
+      {
+        path: 'horario',
+        loadComponent: () => import('./features/worker-dashboard/mi-horario/mi-horario').then(m => m.MiHorarioComponent)
+      },
+      {
+        path: 'consolidado',
+        loadComponent: () => import('./features/worker-dashboard/mi-consolidado/mi-consolidado').then(m => m.MiConsolidadoComponent)
+      },
+      {
+        path: 'bolsa',
+        loadComponent: () => import('./features/worker-dashboard/mi-bolsa/mi-bolsa').then(m => m.MiBolsaComponent)
+      },
+      {
+        path: 'perfil',
+        loadComponent: () => import('./features/worker-dashboard/mi-perfil/mi-perfil').then(m => m.MiPerfilComponent)
+      },
+      { path: '', redirectTo: 'asistencia', pathMatch: 'full' }
+    ]
+  },
+
+  // ── Dashboard Administrativo (SUPERADMIN, ADMIN, JEFE, SUPERVISOR) ─
   {
     path: 'dashboard',
     component: DashboardComponent,
