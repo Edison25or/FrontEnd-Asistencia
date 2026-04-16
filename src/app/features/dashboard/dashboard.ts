@@ -50,7 +50,7 @@ export class DashboardComponent implements OnInit {
   showNueva             = false;
   showConfirmar         = false;
 
-  // ── Control de Menú Acordeón (NUEVO) ──────────────────────
+  // ── Control de Menú Acordeón ──────────────────────────────
   secciones = {
     asistencia: true,
     trabajadores: true,
@@ -119,6 +119,12 @@ export class DashboardComponent implements OnInit {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  // ── Navegación a Mi Perfil ────────────────────────────────
+  irAMiPerfil(): void {
+    this.cerrarMenu();
+    this.router.navigate(['/mi-portal/perfil']);
   }
 
   // ── Lifecycle ─────────────────────────────────────────────

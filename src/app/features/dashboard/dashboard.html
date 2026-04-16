@@ -24,6 +24,7 @@
                 Reporte
               </a>
             </li>
+
             @if (userRole === 'Administrador' || userRole === 'Súper Administrador' || userRole === 'Jefe') {
               <li>
                 <a routerLink="/dashboard/revision-asistencias" routerLinkActive="active">
@@ -31,6 +32,8 @@
                   Revisión de Asistencias
                 </a>
               </li>
+            }
+            @if (userRole === 'Administrador' || userRole === 'Súper Administrador') {
               <li>
                 <a routerLink="/dashboard/consolidado" routerLinkActive="active">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
@@ -50,6 +53,7 @@
                 </a>
               </li>
             }
+
           </ul>
         </div>
       </div>
@@ -170,6 +174,11 @@
                 <span class="dropdown-nombre">{{ userName }}</span>
                 <span class="dropdown-email">{{ userEmail }}</span>
               </div>
+              <hr class="dropdown-divider">
+              <button class="dropdown-item" (click)="irAMiPerfil()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Mi Perfil
+              </button>
               <hr class="dropdown-divider">
               <button class="dropdown-item" (click)="abrirModalPassword()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>

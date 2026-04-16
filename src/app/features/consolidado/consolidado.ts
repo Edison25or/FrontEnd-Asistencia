@@ -16,6 +16,9 @@ export class ConsolidadoComponent implements OnInit {
   private auth = inject(AuthService);
   private cdr  = inject(ChangeDetectorRef);
 
+  // Tope de bolsa (±480 min = 8 horas)
+  private readonly TOPE_BOLSA = 480;
+
   quincenas:       any[] = [];
   quincenaActual:  any   = null;
   consolidados:    any[] = [];
@@ -143,10 +146,12 @@ export class ConsolidadoComponent implements OnInit {
   inicializarDecisiones() {
     this.decisionesExtra = {};
     for (const c of this.consolidados) {
+      const E  = this.totalExtraMin(c);
+      const BE = c.bolsaEntrada ?? 0;
+      const defaultPagar = Math.max(0, E + BE);
       this.decisionesExtra[c.idTrabajador] = {
-        minExtraPagados: c.getTotalExtraMinutos ?? (c.minExtraDiaA + c.minExtranocheA +
-                         c.minExtraDiaB + c.minExtraNocheB),
-        minExtraABolsa:  0,
+        minExtraPagados: defaultPagar,
+        minExtraABolsa:  Math.max(0, E - defaultPagar),
         bolsaConsumida:  0
       };
     }
@@ -158,12 +163,16 @@ export class ConsolidadoComponent implements OnInit {
   }
 
   abrirCierre() {
-    // Inicializar decisiones con "pagar todo" como default
+    // Inicializar decisiones con "pagar E + BE" como default
     for (const c of this.consolidados) {
       if (!this.decisionesExtra[c.idTrabajador]) {
+        const E  = this.totalExtraMin(c);
+        const BE = c.bolsaEntrada ?? 0;
+        const defaultPagar = Math.max(0, E + BE);
         this.decisionesExtra[c.idTrabajador] = {
-          minExtraPagados: this.totalExtraMin(c),
-          minExtraABolsa:  0, bolsaConsumida: 0
+          minExtraPagados: defaultPagar,
+          minExtraABolsa:  Math.max(0, E - defaultPagar),
+          bolsaConsumida:  0
         };
       }
     }
@@ -265,9 +274,78 @@ export class ConsolidadoComponent implements OnInit {
     return { BORRADOR: 'badge-azul', CERRADO: 'badge-morado' }[estado] ?? 'badge-gris';
   }
 
+  // ══════════════════════════════════════════════════════════
+  // VALIDACIONES DE BOLSA (pagar, a bolsa, consumir)
+  // ══════════════════════════════════════════════════════════
+
+  /** Máximo a Pagar: saldo real disponible (extras + bolsa entrada).
+   *  Si el saldo es ≤ 0, no se puede pagar nada. */
+  getMaxPagar(c: any): number {
+    const E  = this.totalExtraMin(c);
+    const BE = c.bolsaEntrada ?? 0;
+    return Math.max(0, E + BE);
+  }
+
+  /** Mínimo a Pagar: solo aplica cuando E + BE > 480, para que
+   *  la bolsa salida no supere +480 a favor. */
+  getMinPagar(c: any): number {
+    const E  = this.totalExtraMin(c);
+    const BE = Math.max(0, c.bolsaEntrada ?? 0);
+    return Math.max(0, (E + BE) - this.TOPE_BOLSA);
+  }
+
+  /** Máximo a Consumir: BE + aBolsa + 480 (no bajar de -480). */
+  getMaxConsumo(c: any): number {
+    const BE     = c.bolsaEntrada ?? 0;
+    const aBolsa = this.decisionesExtra[c.idTrabajador]?.minExtraABolsa ?? 0;
+    return Math.max(0, BE + aBolsa + this.TOPE_BOLSA);
+  }
+
   onPagadosChange(idTrab: number, c: any, val: number) {
-    const total = this.totalExtraMin(c);
-    this.decisionesExtra[idTrab].minExtraPagados = val;
-    this.decisionesExtra[idTrab].minExtraABolsa  = Math.max(0, total - val);
+    const E   = this.totalExtraMin(c);
+    const min = this.getMinPagar(c);
+    const max = this.getMaxPagar(c);
+
+    // Si el usuario borró el campo o escribió algo no numérico, tratar como mínimo
+    const valSeguro = (val == null || isNaN(val)) ? min : val;
+
+    // CLAMP DURO al rango [min, max]
+    let P = Math.max(min, Math.min(valSeguro, max));
+    P = Math.floor(P);
+
+    // Calcular A Bolsa automáticamente
+    let aBolsa: number;
+    let consumoObligado = 0;
+    if (P <= E) {
+      aBolsa = E - P;
+    } else {
+      aBolsa = 0;
+      consumoObligado = P - E;
+    }
+
+    this.decisionesExtra[idTrab].minExtraPagados = P;
+    this.decisionesExtra[idTrab].minExtraABolsa  = aBolsa;
+
+    // Si el pago obliga a consumir de bolsa, ajustar al mínimo obligatorio
+    if (consumoObligado > 0) {
+      const consumoActual = this.decisionesExtra[idTrab].bolsaConsumida ?? 0;
+      if (consumoActual < consumoObligado) {
+        this.decisionesExtra[idTrab].bolsaConsumida = consumoObligado;
+      }
+    }
+
+    this.cdr.detectChanges();
+  }
+
+  onConsumoChange(idTrab: number, c: any, val: number) {
+    const max = this.getMaxConsumo(c);
+    const valSeguro = (val == null || isNaN(val)) ? 0 : val;
+
+    // CLAMP DURO al rango [0, max]
+    let C = Math.max(0, Math.min(valSeguro, max));
+    C = Math.floor(C);
+
+    this.decisionesExtra[idTrab].bolsaConsumida = C;
+    this.cdr.detectChanges();
   }
 }

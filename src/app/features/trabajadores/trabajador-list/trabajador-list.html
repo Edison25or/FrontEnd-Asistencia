@@ -205,32 +205,57 @@
                 Nro. Documento *
                 @if (!esSuperAdmin()) { <span class="badge-solo-superadmin">Solo SuperAdmin</span> }
               </label>
-              <input type="text" formControlName="nroDocumento" class="input-text">
+              <input type="text" formControlName="nroDocumento" class="input-text" [placeholder]="getPlaceholderDocumentoEdicion()">
+              <div class="field-error" *ngIf="editForm.get('nroDocumento')?.touched && editForm.get('nroDocumento')?.invalid">
+                <span *ngIf="editForm.get('nroDocumento')?.errors?.['required']">El número de documento es obligatorio.</span>
+                <span *ngIf="editForm.get('nroDocumento')?.errors?.['pattern'] || editForm.get('nroDocumento')?.errors?.['minlength'] || editForm.get('nroDocumento')?.errors?.['maxlength']">
+                  Formato inválido para el tipo de documento seleccionado.
+                </span>
+              </div>
             </div>
 
             <div class="input-group">
               <label>Primer Nombre *</label>
-              <input type="text" formControlName="pNombre" class="input-text">
+              <input type="text" formControlName="pNombre" class="input-text" maxlength="50">
+              <div class="field-error" *ngIf="editForm.get('pNombre')?.touched && editForm.get('pNombre')?.invalid">
+                <span *ngIf="editForm.get('pNombre')?.errors?.['required']">El primer nombre es obligatorio.</span>
+                <span *ngIf="editForm.get('pNombre')?.errors?.['pattern']">Solo se permiten letras.</span>
+              </div>
             </div>
 
             <div class="input-group">
               <label>Segundo Nombre</label>
-              <input type="text" formControlName="sNombre" class="input-text">
+              <input type="text" formControlName="sNombre" class="input-text" maxlength="50">
+              <div class="field-error" *ngIf="editForm.get('sNombre')?.touched && editForm.get('sNombre')?.invalid">
+                <span *ngIf="editForm.get('sNombre')?.errors?.['pattern']">Solo se permiten letras.</span>
+              </div>
             </div>
 
             <div class="input-group">
               <label>Apellido Paterno *</label>
-              <input type="text" formControlName="aPaterno" class="input-text">
+              <input type="text" formControlName="aPaterno" class="input-text" maxlength="50">
+              <div class="field-error" *ngIf="editForm.get('aPaterno')?.touched && editForm.get('aPaterno')?.invalid">
+                <span *ngIf="editForm.get('aPaterno')?.errors?.['required']">El apellido paterno es obligatorio.</span>
+                <span *ngIf="editForm.get('aPaterno')?.errors?.['pattern']">Solo se permiten letras.</span>
+              </div>
             </div>
 
             <div class="input-group">
               <label>Apellido Materno *</label>
-              <input type="text" formControlName="aMaterno" class="input-text">
+              <input type="text" formControlName="aMaterno" class="input-text" maxlength="50">
+              <div class="field-error" *ngIf="editForm.get('aMaterno')?.touched && editForm.get('aMaterno')?.invalid">
+                <span *ngIf="editForm.get('aMaterno')?.errors?.['required']">El apellido materno es obligatorio.</span>
+                <span *ngIf="editForm.get('aMaterno')?.errors?.['pattern']">Solo se permiten letras.</span>
+              </div>
             </div>
 
             <div class="input-group">
               <label>Fecha de Nacimiento *</label>
               <input type="date" formControlName="fechaNac" class="input-text">
+              <div class="field-error" *ngIf="editForm.get('fechaNac')?.touched && editForm.get('fechaNac')?.invalid">
+                <span *ngIf="editForm.get('fechaNac')?.errors?.['required']">La fecha es obligatoria.</span>
+                <span *ngIf="editForm.get('fechaNac')?.errors?.['edadMinima']">Debe tener al menos 18 años.</span>
+              </div>
             </div>
 
             <div class="input-group">
@@ -241,6 +266,9 @@
                   <option [value]="g.idGenero">{{ g.genero }}</option>
                 }
               </select>
+              <div class="field-error" *ngIf="editForm.get('idGenero')?.touched && editForm.get('idGenero')?.invalid">
+                <span>Debe seleccionar un género.</span>
+              </div>
             </div>
 
           </div>
@@ -253,17 +281,24 @@
                 Email *
                 @if (!esSuperAdmin()) { <span class="badge-solo-superadmin">Solo SuperAdmin</span> }
               </label>
-              <input type="email" formControlName="email" class="input-text">
+              <input type="email" formControlName="email" class="input-text" maxlength="100">
+              <div class="field-error" *ngIf="editForm.get('email')?.touched && editForm.get('email')?.invalid">
+                <span *ngIf="editForm.get('email')?.errors?.['required']">El correo es obligatorio.</span>
+                <span *ngIf="editForm.get('email')?.errors?.['email']">Formato de correo inválido.</span>
+              </div>
             </div>
 
             <div class="input-group">
               <label>Teléfono</label>
-              <input type="text" formControlName="telefono" class="input-text">
+              <input type="text" formControlName="telefono" class="input-text" maxlength="9" placeholder="Ej. 987654321">
+              <div class="field-error" *ngIf="editForm.get('telefono')?.touched && editForm.get('telefono')?.invalid">
+                <span>Celular válido: 9 dígitos empezando con 9.</span>
+              </div>
             </div>
 
             <div class="input-group edit-full-width">
               <label>Dirección</label>
-              <input type="text" formControlName="direccion" class="input-text">
+              <input type="text" formControlName="direccion" class="input-text" maxlength="255">
             </div>
 
             <div class="input-group">
@@ -293,12 +328,15 @@
 
             <div class="input-group">
               <label>Nombre del Contacto</label>
-              <input type="text" formControlName="contactoEmergencias" class="input-text">
+              <input type="text" formControlName="contactoEmergencias" class="input-text" maxlength="100">
             </div>
 
             <div class="input-group">
               <label>Número del Contacto</label>
-              <input type="text" formControlName="nroContacto" class="input-text">
+              <input type="text" formControlName="nroContacto" class="input-text" maxlength="9" placeholder="Ej. 987654321">
+              <div class="field-error" *ngIf="editForm.get('nroContacto')?.touched && editForm.get('nroContacto')?.invalid">
+                <span>Celular válido: 9 dígitos empezando con 9.</span>
+              </div>
             </div>
 
             <div class="input-group">
@@ -371,19 +409,27 @@
     <div class="modal-content">
       <h3>Dar de Baja a Trabajador</h3>
       <p>Estás a punto de cesar a <strong>{{ trabajadorParaCese?.nombreCompleto }}</strong>. Pasará a estado inactivo.</p>
+
+      <div class="form-group">
+        <label>Fecha de Cese *</label>
+        <input type="date" class="input-text" [(ngModel)]="fechaCese" [max]="today">
+      </div>
+
       <div class="form-group">
         <label>Motivo del cese (Opcional):</label>
         <input type="text" class="input-text" [(ngModel)]="motivoCese" placeholder="Ej: Fin de contrato, Renuncia voluntaria...">
       </div>
+
       <div class="modal-actions">
         <button class="btn-info" (click)="cerrarModalCese()" [disabled]="isProcesandoModal">Cancelar</button>
-        <button class="btn-danger" (click)="procesarCese()" [disabled]="isProcesandoModal">
+        <button class="btn-danger" (click)="procesarCese()" [disabled]="isProcesandoModal || !fechaCese">
           {{ isProcesandoModal ? 'Procesando...' : 'Confirmar Baja' }}
         </button>
       </div>
     </div>
   </div>
 }
+
 
 <!-- ===================== MODAL: REINGRESO ===================== -->
 @if (mostrarModalReingreso) {

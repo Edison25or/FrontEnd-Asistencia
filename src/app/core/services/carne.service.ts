@@ -18,7 +18,6 @@ interface Logos {
 
 @Injectable({ providedIn: 'root' })
 export class CarneService {
-
   async generarPDF(trabajadores: any[]): Promise<void> {
     const logos = await this.cargarLogos();
     const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [H, W * 2] });
@@ -30,7 +29,6 @@ export class CarneService {
 
     doc.save('carnes_trabajadores.pdf');
   }
-
   async generarPDFIndividual(trabajador: any): Promise<void> {
     const logos = await this.cargarLogos();
     const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [H, W * 2] });
@@ -38,9 +36,7 @@ export class CarneService {
     this.dibujarPar(doc, trabajador, logos);
     doc.save(`carne_${trabajador.idTrabajador}.pdf`);
   }
-
   // ── CARGA LOGOS ──────────────────────────────────────────────
-
   private async cargarLogos(): Promise<Logos> {
     const [verde, negro] = await Promise.all([
       this.cargarImagen('/logo_avendacom_verde.png'),
@@ -48,9 +44,7 @@ export class CarneService {
     ]);
     return { verde, negro };
   }
-
   // ── DIBUJO PAR ───────────────────────────────────────────────
-
   private dibujarPar(doc: jsPDF, t: any, logos: Logos): void {
     doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, W * 2, H, 'F');
@@ -58,9 +52,7 @@ export class CarneService {
     this.dibujarCarne(doc, 0, t, 'IN', logos.verde, '#8cc63f');
     this.dibujarCarne(doc, W, t, 'OU', logos.negro, '#808080');
   }
-
   // ── CARNÉ ────────────────────────────────────────────────────
-
   private dibujarCarne(
     doc:        jsPDF,
     ox:         number,

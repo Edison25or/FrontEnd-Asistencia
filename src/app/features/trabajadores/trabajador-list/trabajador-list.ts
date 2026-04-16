@@ -1,6 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -8,6 +7,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
 import { UsuarioService } from '../../../core/services/usuario.service';
+
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 
 @Component({
   selector: 'app-trabajador-list',
@@ -29,7 +30,7 @@ export class TrabajadorListComponent implements OnInit {
   // --- VARIABLES DE USUARIO ---
   rolUsuario: string = '';
   isProcesandoModal = false;
-
+  
   // --- DATOS, BÚSQUEDA Y PAGINACIÓN ---
   trabajadores: any[]         = [];
   trabajadoresFiltrados: any[] = [];
@@ -49,6 +50,8 @@ export class TrabajadorListComponent implements OnInit {
   mostrarModalCese       = false;
   trabajadorParaCese: any = null;
   motivoCese             = '';
+  fechaCese              = '';
+  today = new Date().toISOString().split('T')[0];
 
   // --- MODAL REINGRESO ---
   mostrarModalReingreso        = false;
@@ -71,19 +74,23 @@ export class TrabajadorListComponent implements OnInit {
   puestosEdicion: any[]    = [];
   generosEdicion: any[]    = [];
 
+// Regex reutilizables
+  private soloLetras = Validators.pattern(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/);
+  private celularPeru = Validators.pattern(/^9\d{8}$/);
+
   editForm: FormGroup = this.fb.group({
     docIdentidad:        ['', Validators.required],
-    nroDocumento:        ['', [Validators.required, Validators.minLength(8)]],
-    pNombre:             ['', Validators.required],
-    sNombre:             [''],
-    aPaterno:            ['', Validators.required],
-    aMaterno:            ['', Validators.required],
-    fechaNac:            ['', Validators.required],
-    email:               ['', [Validators.required, Validators.email]],
-    telefono:            [''],
-    direccion:           [''],
-    contactoEmergencias: [''],
-    nroContacto:         [''],
+    nroDocumento:        ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8), Validators.pattern(/^\d{8}$/)]],
+    pNombre:             ['', [Validators.required, Validators.maxLength(50), this.soloLetras]],
+    sNombre:             ['', [Validators.maxLength(50), this.soloLetras]],
+    aPaterno:            ['', [Validators.required, Validators.maxLength(50), this.soloLetras]],
+    aMaterno:            ['', [Validators.required, Validators.maxLength(50), this.soloLetras]],
+    fechaNac:            ['', [Validators.required, this.edadMinimaValidator(18)]],
+    email:               ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
+    telefono:            ['', [this.celularPeru]],
+    direccion:           ['', Validators.maxLength(255)],
+    contactoEmergencias: ['', Validators.maxLength(100)],
+    nroContacto:         ['', [this.celularPeru]],
     parentesco:          [''],
     idGenero:            ['', Validators.required],
     idArea:              ['', Validators.required],
@@ -352,6 +359,7 @@ export class TrabajadorListComponent implements OnInit {
   abrirModalCese(trabajador: any) {
     this.trabajadorParaCese = trabajador;
     this.motivoCese         = '';
+    this.fechaCese          = new Date().toISOString().split('T')[0]; // Hoy por defecto
     this.mostrarModalCese   = true;
     this.cdr.detectChanges();
   }
@@ -360,11 +368,16 @@ export class TrabajadorListComponent implements OnInit {
     this.mostrarModalCese   = false;
     this.trabajadorParaCese = null;
     this.motivoCese         = '';
+    this.fechaCese          = '';
     this.cdr.detectChanges();
   }
 
-  procesarCese() {
+procesarCese() {
     if (!this.trabajadorParaCese) return;
+    if (!this.fechaCese) {
+      alert('Debe seleccionar una fecha de cese.');
+      return;
+    }
 
     const id     = this.trabajadorParaCese.idTrabajador;
     const motivo = this.motivoCese.trim() || 'Cese de actividades';
@@ -372,7 +385,7 @@ export class TrabajadorListComponent implements OnInit {
     this.isProcesandoModal = true;
     this.cdr.detectChanges();
 
-    this.trabajadorService.cesarTrabajador(id, motivo).subscribe({
+    this.trabajadorService.cesarTrabajador(id, motivo, this.fechaCese).subscribe({
       next: () => {
         this.isProcesandoModal = false;
         this.cerrarModalCese();
@@ -384,6 +397,8 @@ export class TrabajadorListComponent implements OnInit {
           this.cerrarModalCese();
           this.cargarTrabajadores();
         } else {
+          const mensaje = err.error?.message || 'Error al cesar al trabajador.';
+          alert(mensaje);
           console.error('Error al cesar al trabajador', err);
           this.cdr.detectChanges();
         }
@@ -542,13 +557,56 @@ export class TrabajadorListComponent implements OnInit {
   }
 
   paginaSiguiente() {
-    // Opcional: puedes verificar si hay más datos con el totalPages que devuelve Spring
     this.cambiarPagina(this.page + 1);
   }
 
   paginaAnterior() {
     if (this.page > 0) {
       this.cambiarPagina(this.page - 1);
+    }
+  }
+
+  /** Validator custom: edad mínima */
+  private edadMinimaValidator(edadMinima: number) {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (!control.value) return null;
+      const fechaNac = new Date(control.value);
+      const hoy = new Date();
+      let edad = hoy.getFullYear() - fechaNac.getFullYear();
+      const m = hoy.getMonth() - fechaNac.getMonth();
+      if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
+      }
+      return edad < edadMinima ? { edadMinima: { requerida: edadMinima, actual: edad } } : null;
+    };
+  }
+
+  /** Cambia los validators de nroDocumento según el tipo seleccionado */
+  private actualizarValidacionDocumentoEdicion(tipo: string) {
+    const ctrl = this.editForm.get('nroDocumento');
+    if (!ctrl) return;
+    switch (tipo) {
+      case 'DNI':
+        ctrl.setValidators([Validators.required, Validators.minLength(8), Validators.maxLength(8), Validators.pattern(/^\d{8}$/)]);
+        break;
+      case 'CE':
+        ctrl.setValidators([Validators.required, Validators.minLength(9), Validators.maxLength(12), Validators.pattern(/^\d{9,12}$/)]);
+        break;
+      case 'PASAPORTE':
+        ctrl.setValidators([Validators.required, Validators.minLength(6), Validators.maxLength(20), Validators.pattern(/^[a-zA-Z0-9]{6,20}$/)]);
+        break;
+    }
+    ctrl.updateValueAndValidity();
+  }
+
+  /** Placeholder dinámico para el nro documento en edición */
+  getPlaceholderDocumentoEdicion(): string {
+    const tipo = this.editForm.get('docIdentidad')?.value;
+    switch (tipo) {
+      case 'DNI': return '8 dígitos numéricos';
+      case 'CE': return '9-12 dígitos numéricos';
+      case 'PASAPORTE': return '6-20 caracteres alfanuméricos';
+      default: return '';
     }
   }
 

@@ -218,7 +218,7 @@ export class GrupoListComponent implements OnInit {
 
   // ── Helpers ───────────────────────────────────────────────
   esSuperAdmin()     { return this.rolUsuario === 'ROLE_SUPERADMIN'; }
-  esAdmin()          { return this.rolUsuario === 'ROLE_ADMIN' || this.esSuperAdmin(); }
+  esAdmin()          { return this.rolUsuario === 'ROLE_ADMIN' || this.rolUsuario === 'ROLE_JEFE' || this.esSuperAdmin(); }
   esSoloSupervisor() { return this.rolUsuario === 'ROLE_SUPERVISOR' && !this.esAdmin(); }
   getPreviewMiembros(trabajadores: any[]): any[] { return trabajadores?.slice(0, 5) || []; }
 

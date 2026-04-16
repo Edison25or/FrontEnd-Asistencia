@@ -143,3 +143,27 @@
   font-size: 0.9rem;
   font-weight: 500;
 }
+
+/* ── Mensajes de error de validación ──────────────────── */
+.field-error {
+  color: #dc3545;
+  font-size: 0.78rem;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.field-error span {
+  display: block;
+}
+
+/* Borde rojo en campos inválidos tocados */
+input.ng-invalid.ng-touched,
+select.ng-invalid.ng-touched {
+  border-color: #dc3545 !important;
+}
+
+/* Borde verde en campos válidos tocados */
+input.ng-valid.ng-touched:not([formControlName="sNombre"]):not([formControlName="direccion"]):not([formControlName="telefono"]):not([formControlName="contactoEmergencias"]):not([formControlName="nroContacto"]),
+select.ng-valid.ng-touched {
+  border-color: #28a745 !important;
+}

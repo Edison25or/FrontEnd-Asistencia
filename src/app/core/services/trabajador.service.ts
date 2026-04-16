@@ -69,10 +69,14 @@ export class TrabajadorService {
   // CESAR TRABAJADOR
   // =============================
 
-  cesarTrabajador(id: number, motivo: string = 'Cese de actividades'): Observable<any> {
+  cesarTrabajador(id: number, motivo: string = 'Cese de actividades', fechaCese?: string): Observable<any> {
 
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('motivo', motivo);
+
+    if (fechaCese) {
+      params = params.set('fechaCese', fechaCese);
+    }
 
     return this.http.patch<any>(
       `${this.apiUrl}/${id}/cesar`,

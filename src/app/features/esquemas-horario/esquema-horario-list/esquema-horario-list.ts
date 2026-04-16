@@ -293,5 +293,5 @@ export class EsquemaHorarioListComponent implements OnInit {
   cerrarDetalle() { this.mostrarDetalle = false; setTimeout(() => { this.grupoDetalle = null; this.cdr.detectChanges(); }, 200); }
 
   esSuperAdmin() { return this.rolUsuario === 'ROLE_SUPERADMIN'; }
-  esAdmin()      { return this.rolUsuario === 'ROLE_ADMIN' || this.esSuperAdmin(); }
+  esAdmin()      { return this.rolUsuario === 'ROLE_ADMIN' || this.rolUsuario === 'ROLE_JEFE' || this.esSuperAdmin(); }
 }

@@ -248,15 +248,16 @@
         <div class="cierre-tabla-wrap">
           <table class="cierre-tabla">
             <thead>
-              <tr>
-                <th>Trabajador</th>
-                <th class="th-c">Total extra</th>
-                <th class="th-c">Bolsa entrada</th>
-                <th>Pagar (min)</th>
-                <th>A bolsa (min)</th>
-                <th>Consumir bolsa (min)</th>
-                <th class="th-c">Bolsa salida estimada</th>
-              </tr>
+                <tr>
+                  <th>Trabajador</th>
+                  <th class="td-c">Total extra</th>
+                  <th class="td-c">Bolsa entrada</th>
+                  <th class="td-c">Debe (min)</th>
+                  <th class="td-c">Pagar (min)</th>
+                  <th class="td-c">A bolsa (min)</th>
+                  <th class="td-c">Consumir bolsa (min)</th>
+                  <th class="td-c">Bolsa salida estimada</th>
+                </tr>
             </thead>
             <tbody>
               @for (c of consolidados; track c.idTrabajador) {
@@ -266,21 +267,32 @@
                   <td class="td-c" [class.bolsa-neg]="c.bolsaEntrada < 0">
                     {{ formatMin(c.bolsaEntrada) }}
                   </td>
-                  <td>
-                    <input type="number" class="input-dec"
-                           [(ngModel)]="decisionesExtra[c.idTrabajador].minExtraPagados"
-                           (ngModelChange)="onPagadosChange(c.idTrabajador, c, $event)"
-                           min="0" [max]="totalExtraMin(c)">
+                  <td class="td-c" [class.bolsa-neg]="(c.minDebe ?? 0) > 0">
+                    {{ formatMin(c.minDebe ?? 0) }}
                   </td>
                   <td>
-                    <input type="number" class="input-dec"
-                           [(ngModel)]="decisionesExtra[c.idTrabajador].minExtraABolsa"
-                           min="0" [max]="totalExtraMin(c)">
+                    <input #pagarInput type="number" class="input-dec"
+                           [ngModel]="decisionesExtra[c.idTrabajador].minExtraPagados"
+                           (input)="onPagadosChange(c.idTrabajador, c, pagarInput.valueAsNumber)"
+                           (blur)="onPagadosChange(c.idTrabajador, c, pagarInput.valueAsNumber)"
+                           [disabled]="getMaxPagar(c) === 0"
+                           [min]="getMinPagar(c)" [max]="getMaxPagar(c)"
+                           [title]="'Mínimo: ' + getMinPagar(c) + ' · Máximo: ' + getMaxPagar(c)">
                   </td>
                   <td>
-                    <input type="number" class="input-dec"
-                           [(ngModel)]="decisionesExtra[c.idTrabajador].bolsaConsumida"
-                           min="0">
+                    <input type="number" class="input-dec input-readonly"
+                           [value]="decisionesExtra[c.idTrabajador].minExtraABolsa"
+                           readonly tabindex="-1"
+                           title="Calculado automáticamente: Extras − Pagados">
+                  </td>
+                  <td>
+                    <input #consumoInput type="number" class="input-dec"
+                           [ngModel]="decisionesExtra[c.idTrabajador].bolsaConsumida"
+                           (input)="onConsumoChange(c.idTrabajador, c, consumoInput.valueAsNumber)"
+                           (blur)="onConsumoChange(c.idTrabajador, c, consumoInput.valueAsNumber)"
+                           [disabled]="getMaxConsumo(c) === 0"
+                           min="0" [max]="getMaxConsumo(c)"
+                           [title]="'Máximo: ' + getMaxConsumo(c)">
                   </td>
                   <td class="td-c" [class.bolsa-neg]="(c.bolsaEntrada + (decisionesExtra[c.idTrabajador]?.minExtraABolsa ?? 0) - (decisionesExtra[c.idTrabajador]?.bolsaConsumida ?? 0)) < 0">
                     {{ formatMin(c.bolsaEntrada
