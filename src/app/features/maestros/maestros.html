@@ -4,7 +4,7 @@
   <div class="page-header">
     <div>
       <h2 class="page-title">Tablas Maestras</h2>
-      <p class="page-subtitle">Gestión de Géneros, Áreas y Puestos del sistema</p>
+      <p class="page-subtitle">Catálogos base del sistema: personal, organización y asistencia</p>
     </div>
     <button class="btn-nuevo" (click)="abrirCrear()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -28,6 +28,29 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
       Puestos
       <span class="tab-badge">{{ puestos.length }}</span>
+    </button>
+
+    <!--
+      Catálogos incorporados en esta versión. A diferencia de los tres
+      anteriores, solo admiten alta y baja: renombrar un turno o un motivo
+      de cese alteraría la interpretación de registros ya emitidos.
+    -->
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'turnos'" (click)="setTab('turnos')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Turnos
+      <span class="tab-badge">{{ turnos.length }}</span>
+    </button>
+
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'tipos-ausencia'" (click)="setTab('tipos-ausencia')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Tipos de Ausencia
+      <span class="tab-badge">{{ tiposAusencia.length }}</span>
+    </button>
+
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'motivos-cese'" (click)="setTab('motivos-cese')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
+      Motivos de Cese
+      <span class="tab-badge">{{ motivosCese.length }}</span>
     </button>
   </div>
 
@@ -168,6 +191,61 @@
       </table>
     }
 
+
+    <!--
+      TABLA GENÉRICA: turnos, tipos de ausencia y motivos de cese.
+      Una sola tabla para los tres, porque comparten forma: identificador,
+      nombre, un detalle opcional y estado. Sin botón de editar: estos
+      catálogos solo admiten alta y baja, porque renombrarlos alteraría la
+      interpretación de registros ya emitidos.
+    -->
+    @if (!isLoading && !permiteEditar) {
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            @if (tieneColumnaDetalle) { <th>{{ labelDetalle }}</th> }
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of itemsActuales; track $index) {
+            <tr [class.fila-inactiva]="!item.activo">
+              <td class="col-id">{{ item.idTurno ?? item.id }}</td>
+              <td class="col-nombre">{{ nombreDe(item) }}</td>
+              @if (tieneColumnaDetalle) { <td>{{ detalleDe(item) }}</td> }
+              <td>
+                <span class="badge" [class.badge-activo]="item.activo" [class.badge-inactivo]="!item.activo">
+                  {{ item.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="col-acciones">
+                @if (item.activo) {
+                  <button class="btn-icon toggle-off" title="Dar de baja" (click)="confirmarToggle(item)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                  </button>
+                } @else {
+                  <span class="opcional">dado de baja</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="tieneColumnaDetalle ? 5 : 4" class="estado-vacio">
+                No hay registros. Créalos con el botón «Nuevo {{ labelSingular }}».
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    @if (errorGlobal) {
+      <div class="modal-error">{{ errorGlobal }}</div>
+    }
+
   </div><!-- /tabla-card -->
 </div><!-- /maestros-container -->
 
@@ -242,6 +320,77 @@
         </form>
       }
 
+      <!-- FORM TURNO -->
+      @if (tabActual === 'turnos') {
+        <form [formGroup]="turnoForm">
+          <div class="campo">
+            <label>Nombre del Turno *</label>
+            <input type="text" formControlName="nombre" placeholder="Ej: Día, Noche, Madrugada" class="input-text" maxlength="40">
+            @if (turnoForm.get('nombre')?.invalid && turnoForm.get('nombre')?.touched) {
+              <span class="campo-error">El nombre es obligatorio (máx. 40 caracteres).</span>
+            }
+          </div>
+          <div class="campo">
+            <label>Hora de inicio <span class="opcional">(informativa)</span></label>
+            <input type="time" formControlName="horaInicio" class="input-text">
+          </div>
+          <div class="campo">
+            <label>Hora de fin <span class="opcional">(informativa)</span></label>
+            <input type="time" formControlName="horaFin" class="input-text">
+          </div>
+          <p class="toggle-aviso">
+            Las horas solo describen el turno en la interfaz. El turno de una jornada
+            se toma del esquema de horario programado, nunca de la hora real de
+            marcación. Si la hora de fin es anterior a la de inicio, el turno cruza
+            la medianoche.
+          </p>
+          <p class="toggle-aviso">
+            Las tolerancias de tardanza, entrada anticipada y salida posterior se
+            configuran en cada esquema de horario, no aquí.
+          </p>
+        </form>
+      }
+
+      <!-- FORM TIPO DE AUSENCIA -->
+      @if (tabActual === 'tipos-ausencia') {
+        <form [formGroup]="tipoAusenciaForm">
+          <div class="campo">
+            <label>Nombre *</label>
+            <input type="text" formControlName="nombre" placeholder="Ej: Vacaciones, Descanso médico" class="input-text" maxlength="80">
+            @if (tipoAusenciaForm.get('nombre')?.invalid && tipoAusenciaForm.get('nombre')?.touched) {
+              <span class="campo-error">El nombre es obligatorio (máx. 80 caracteres).</span>
+            }
+          </div>
+          <div class="campo">
+            <label>Descripción <span class="opcional">(opcional)</span></label>
+            <textarea formControlName="descripcion" class="input-textarea"
+                      placeholder="Cuándo se usa este tipo de ausencia..." maxlength="200" rows="3"></textarea>
+          </div>
+          <p class="toggle-aviso">
+            El mismo catálogo sirve para permisos planificados y para faltas
+            justificadas. Lo que las distingue es dónde se registran, no el tipo.
+          </p>
+        </form>
+      }
+
+      <!-- FORM MOTIVO DE CESE -->
+      @if (tabActual === 'motivos-cese') {
+        <form [formGroup]="motivoCeseForm">
+          <div class="campo">
+            <label>Nombre *</label>
+            <input type="text" formControlName="nombre" placeholder="Ej: Renuncia voluntaria" class="input-text" maxlength="80">
+            @if (motivoCeseForm.get('nombre')?.invalid && motivoCeseForm.get('nombre')?.touched) {
+              <span class="campo-error">El nombre es obligatorio (máx. 80 caracteres).</span>
+            }
+          </div>
+          <p class="toggle-aviso">
+            Conviene mantener siempre un motivo «Otro»: cuando el cese no encaja en
+            ningún motivo tipificado, el detalle se guarda aparte. Sin esa opción
+            habría que forzar un motivo que no corresponde.
+          </p>
+        </form>
+      }
+
       @if (modalError) {
         <div class="modal-error">{{ modalError }}</div>
       }
@@ -276,7 +425,7 @@
       <h3>{{ itemToggle.activo ? 'Deshabilitar' : 'Habilitar' }} {{ labelSingular }}</h3>
       <p>
         ¿Confirmas que deseas <strong>{{ itemToggle.activo ? 'deshabilitar' : 'habilitar' }}</strong> el registro
-        <strong>«{{ itemToggle.genero ?? itemToggle.area ?? itemToggle.puesto }}»</strong>?
+        <strong>«{{ nombreDe(itemToggle) }}»</strong>?
       </p>
       @if (itemToggle.activo) {
         <p class="toggle-aviso">Los registros deshabilitados no aparecerán en los formularios del sistema.</p>

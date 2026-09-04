@@ -38,10 +38,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/worker-dashboard/mi-consolidado/mi-consolidado').then(m => m.MiConsolidadoComponent)
       },
       {
-        path: 'bolsa',
-        loadComponent: () => import('./features/worker-dashboard/mi-bolsa/mi-bolsa').then(m => m.MiBolsaComponent)
-      },
-      {
         path: 'perfil',
         loadComponent: () => import('./features/worker-dashboard/mi-perfil/mi-perfil').then(m => m.MiPerfilComponent)
       },
@@ -75,6 +71,26 @@ export const routes: Routes = [
         path: 'carnets',
         loadComponent: () => import('./features/carnets/carne-list/carne-list').then(m => m.CarneListComponent)
       },
+      // Turnos vive ahora como pestaña dentro de Tablas Maestras, junto a
+      // Tipos de Ausencia y Motivos de Cese. Se conserva la ruta como
+      // redirección para no romper enlaces guardados.
+      { path: 'turnos', redirectTo: 'maestros', pathMatch: 'full' },
+      {
+        path: 'estadisticas',
+        loadComponent: () => import('./features/estadisticas/estadisticas').then(m => m.EstadisticasComponent)
+      },
+      {
+        path: 'ausencias',
+        loadComponent: () => import('./features/ausencias/ausencias').then(m => m.AusenciasComponent)
+      },
+      {
+        path: 'parametros',
+        loadComponent: () => import('./features/parametros/parametros').then(m => m.ParametrosComponent)
+      },
+      {
+        path: 'feriados',
+        loadComponent: () => import('./features/feriados/feriados').then(m => m.FeriadosComponent)
+      },
       {
         path: 'esquemas-horario',
         loadComponent: () => import('./features/esquemas-horario/esquema-horario-list/esquema-horario-list').then(m => m.EsquemaHorarioListComponent)
@@ -106,10 +122,6 @@ export const routes: Routes = [
       {
         path: 'reporte-consolidado',
         loadComponent: () => import('./features/consolidado/reporte-consolidado/reporte-consolidado').then(m => m.ReporteConsolidadoComponent)
-      },
-      {
-        path: 'historial-bolsa',
-        loadComponent: () => import('./features/consolidado/historial-bolsa/historial-bolsa').then(m => m.HistorialBolsaComponent)
       },
       { path: '', redirectTo: 'asistencias', pathMatch: 'full' }
     ]

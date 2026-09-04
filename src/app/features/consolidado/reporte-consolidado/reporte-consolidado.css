@@ -98,3 +98,12 @@
   .print-tabla tfoot td { background: #e2e8f0; font-weight: bold; border-top: 2px solid #000; }
   .print-footer  { margin-top: 10px; font-size: 8px; color: #666; text-align: right; }
 }
+
+/* ── Columna de horas en feriado ─────────────────────────── */
+/* Rosa, el mismo color con que se marca el feriado en la bandeja de
+   revisión, para que ambas pantallas se lean igual. Se muestra siempre,
+   aunque el período no tenga feriados: un cero también es información. */
+.td-feriado {
+  color: #9d174d;
+  font-weight: 600;
+}

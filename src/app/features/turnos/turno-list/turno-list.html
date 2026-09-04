@@ -4,7 +4,9 @@
   <div class="turno-header">
     <div>
       <h2 class="turno-titulo">Turnos de Trabajo</h2>
-      <p class="turno-subtitulo">Gestiona los horarios y tolerancias de cada turno</p>
+      <p class="turno-subtitulo">
+        Catálogo de turnos. Las tolerancias se configuran en cada esquema de horario.
+      </p>
     </div>
     @if (esAdmin()) {
       <button class="btn-nuevo" (click)="abrirModalNuevo()">
@@ -20,41 +22,53 @@
       <thead>
         <tr>
           <th>Nombre</th>
-          <th style="text-align:center">Entrada</th>
-          <th style="text-align:center">Salida</th>
+          <th style="text-align:center">Inicio</th>
+          <th style="text-align:center">Fin</th>
           <th style="text-align:center">Duración</th>
-          <th style="text-align:center">Tolerancia</th>
+          <th style="text-align:center">Cruza medianoche</th>
           @if (esAdmin()) {
             <th style="text-align:center">Acciones</th>
           }
         </tr>
       </thead>
       <tbody>
+        @if (isLoading) {
+          <tr><td colspan="6" style="text-align:center">Cargando…</td></tr>
+        }
+
         @for (t of turnos; track t.idTurno) {
           <tr>
             <td>
               <span class="turno-nombre">{{ t.nombre }}</span>
             </td>
             <td style="text-align:center">
-              <span class="hora-badge verde">{{ t.horaEntrada }}</span>
+              <span class="hora-badge verde">{{ hora(t.horaInicio) }}</span>
             </td>
             <td style="text-align:center">
-              <span class="hora-badge rojo">{{ t.horaSalida }}</span>
+              <span class="hora-badge rojo">{{ hora(t.horaFin) }}</span>
             </td>
             <td style="text-align:center">
-              <span class="duracion">{{ duracionTurno(t.horaEntrada, t.horaSalida) }}</span>
+              <span class="duracion">{{ duracionTurno(t.horaInicio, t.horaFin) }}</span>
             </td>
             <td style="text-align:center">
-              <span class="tolerancia-badge">{{ t.toleranciaMinutos }} min</span>
+              <!--
+                Informativo. La jornada del turno noche se resuelve por la
+                ventana horaria del pre-registro, no por estas horas.
+              -->
+              <span class="tolerancia-badge" *ngIf="t.cruzaMedianoche">Sí</span>
+              <span *ngIf="!t.cruzaMedianoche">—</span>
             </td>
             @if (esAdmin()) {
               <td style="text-align:center">
                 <div class="acciones">
-                  <button class="btn-icon editar" title="Editar" (click)="abrirModalEditar(t)">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
+                  <!--
+                    No hay botón de editar: el backend no expone
+                    actualización de turnos. Cambiar el nombre o el horario
+                    de un turno en uso alteraría la interpretación de
+                    jornadas ya consolidadas.
+                  -->
                   @if (esSuperAdmin()) {
-                    <button class="btn-icon eliminar" title="Eliminar" (click)="confirmarEliminar(t)">
+                    <button class="btn-icon eliminar" title="Desactivar" (click)="confirmarEliminar(t)">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                     </button>
                   }
@@ -62,27 +76,23 @@
               </td>
             }
           </tr>
-        } @empty {
-          <tr>
-            <td colspan="6" class="empty-cell">
-              @if (isLoading) { Cargando turnos... }
-              @else { No hay turnos registrados. }
-            </td>
-          </tr>
+        }
+
+        @if (!isLoading && turnos.length === 0) {
+          <tr><td colspan="6" style="text-align:center">No hay turnos activos.</td></tr>
         }
       </tbody>
     </table>
   </div>
-
 </div>
 
-<!-- ===================== MODAL CREAR / EDITAR ===================== -->
+<!-- ===================== MODAL NUEVO ===================== -->
 @if (mostrarModal) {
   <div class="modal-overlay" (click)="cerrarModal()">
     <div class="modal-box" (click)="$event.stopPropagation()">
 
       <div class="modal-header">
-        <h3>{{ modoEdicion ? 'Editar Turno' : 'Nuevo Turno' }}</h3>
+        <h3>Nuevo Turno</h3>
         <button class="modal-close" (click)="cerrarModal()">✕</button>
       </div>
 
@@ -92,49 +102,43 @@
         }
 
         <form [formGroup]="turnoForm">
-          <!-- Nombre -->
           <div class="form-group">
             <label>Nombre del turno <span class="req">*</span></label>
-            <input type="text" formControlName="nombre" placeholder="Ej: Mañana A, Noche B...">
+            <input type="text" formControlName="nombre" placeholder="Ej: Día, Noche, Madrugada…">
             @if (turnoForm.get('nombre')?.invalid && turnoForm.get('nombre')?.touched) {
               <span class="form-error">El nombre es obligatorio</span>
             }
           </div>
 
-          <!-- Horas -->
           <div class="form-row">
             <div class="form-group">
-              <label>Hora de entrada <span class="req">*</span></label>
-              <input type="time" formControlName="horaEntrada">
-              @if (turnoForm.get('horaEntrada')?.invalid && turnoForm.get('horaEntrada')?.touched) {
-                <span class="form-error">Requerido</span>
-              }
+              <label>Hora de inicio</label>
+              <input type="time" formControlName="horaInicio">
             </div>
             <div class="form-group">
-              <label>Hora de salida <span class="req">*</span></label>
-              <input type="time" formControlName="horaSalida">
-              @if (turnoForm.get('horaSalida')?.invalid && turnoForm.get('horaSalida')?.touched) {
-                <span class="form-error">Requerido</span>
-              }
+              <label>Hora de fin</label>
+              <input type="time" formControlName="horaFin">
             </div>
           </div>
 
-          <!-- Tolerancia -->
-          <div class="form-group">
-            <label>Tolerancia de tardanza (minutos) <span class="req">*</span></label>
-            <input type="number" formControlName="toleranciaMinutos" min="0" max="60">
-            <small class="form-hint">Minutos después de la hora de entrada antes de marcar tardanza</small>
-            @if (turnoForm.get('toleranciaMinutos')?.invalid && turnoForm.get('toleranciaMinutos')?.touched) {
-              <span class="form-error">Valor entre 0 y 60</span>
-            }
-          </div>
+          <small class="form-hint">
+            Las horas son informativas: describen el turno en la interfaz. El turno
+            de una jornada se toma del esquema programado, nunca de la hora real de
+            marcación. Si la hora de fin es anterior a la de inicio, el turno cruza
+            la medianoche.
+          </small>
+
+          <small class="form-hint">
+            Las tolerancias de tardanza, entrada anticipada y salida posterior se
+            configuran en cada esquema de horario, no aquí.
+          </small>
         </form>
       </div>
 
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="cerrarModal()" [disabled]="isProcesando">Cancelar</button>
         <button class="btn-guardar" (click)="guardar()" [disabled]="isProcesando">
-          {{ isProcesando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Crear Turno') }}
+          {{ isProcesando ? 'Guardando...' : 'Crear Turno' }}
         </button>
       </div>
 
@@ -142,22 +146,32 @@
   </div>
 }
 
-<!-- ===================== MODAL ELIMINAR ===================== -->
+<!-- ===================== MODAL DESACTIVAR ===================== -->
 @if (mostrarModalEliminar) {
   <div class="modal-overlay" (click)="cerrarModalEliminar()">
     <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Eliminar Turno</h3>
+        <h3>Desactivar Turno</h3>
         <button class="modal-close" (click)="cerrarModalEliminar()">✕</button>
       </div>
+
       <div class="modal-body">
-        <p>¿Estás seguro que deseas eliminar el turno <strong>{{ turnoParaEliminar?.nombre }}</strong>?</p>
-        <p class="advertencia">Esta acción no se puede deshacer.</p>
+        @if (errorEliminar) {
+          <div class="alert-error">{{ errorEliminar }}</div>
+        }
+
+        <p>¿Desactivar el turno <strong>{{ turnoParaEliminar?.nombre }}</strong>?</p>
+        <p class="advertencia">
+          El turno deja de ofrecerse en nuevos esquemas de horario. Las jornadas
+          ya registradas con él conservan su clasificación. Si algún esquema
+          vigente lo usa, la operación será rechazada.
+        </p>
       </div>
+
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="cerrarModalEliminar()" [disabled]="isProcesando">Cancelar</button>
-        <button class="btn-eliminar" (click)="eliminar()" [disabled]="isProcesando">
-          {{ isProcesando ? 'Eliminando...' : 'Sí, eliminar' }}
+        <button class="btn-eliminar" (click)="desactivar()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Procesando...' : 'Sí, desactivar' }}
         </button>
       </div>
     </div>

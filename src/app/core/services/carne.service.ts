@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
 
+/** Medidas del carné, en milímetros. */
 const W = 62;
 const H = 85;
 
@@ -11,131 +12,145 @@ interface LogoData {
   height:  number;
 }
 
-interface Logos {
-  verde: LogoData | null;
-  negro: LogoData | null;
-}
-
+/**
+ * Generación de carnés (CU11).
+ *
+ * ============================================================
+ * UN SOLO CÓDIGO POR TRABAJADOR
+ * ============================================================
+ * La versión anterior imprimía DOS carnés por trabajador, uno de ENTRADA
+ * con sufijo IN y otro de SALIDA con sufijo OU, y el algoritmo de
+ * marcación deducía la acción del sufijo escaneado.
+ *
+ * Eso contradice RT-02, que exige un único código por trabajador, y
+ * además hacía posible un error habitual: pasar el carné equivocado y
+ * registrar una salida cuando se estaba entrando.
+ *
+ * Ahora el código es uno solo y el sistema deduce si es entrada o salida
+ * del estado de la jornada: si hay una jornada abierta en la ventana, el
+ * escaneo es una salida; si hay una pendiente, es una entrada.
+ *
+ * El valor se toma de `codigoBarras`, que el backend genera y almacena en
+ * el trabajador. NO se construye aquí concatenando el identificador: si
+ * mañana se cambia por un código aleatorio no adivinable, el carné sigue
+ * imprimiendo lo correcto sin tocar este archivo.
+ */
 @Injectable({ providedIn: 'root' })
 export class CarneService {
+
+  /** Un carné por página. Ya no hay que doblar la hoja. */
   async generarPDF(trabajadores: any[]): Promise<void> {
-    const logos = await this.cargarLogos();
-    const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [H, W * 2] });
+    const logo = await this.cargarImagen('/logo_avendacom_verde.png');
+    const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [W, H] });
 
     for (let i = 0; i < trabajadores.length; i++) {
-      if (i > 0) doc.addPage();
-      this.dibujarPar(doc, trabajadores[i], logos);
+      if (i > 0) doc.addPage([W, H], 'portrait');
+      this.dibujarCarne(doc, trabajadores[i], logo);
     }
 
     doc.save('carnes_trabajadores.pdf');
   }
+
   async generarPDFIndividual(trabajador: any): Promise<void> {
-    const logos = await this.cargarLogos();
-    const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [H, W * 2] });
+    const logo = await this.cargarImagen('/logo_avendacom_verde.png');
+    const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [W, H] });
 
-    this.dibujarPar(doc, trabajador, logos);
-    doc.save(`carne_${trabajador.idTrabajador}.pdf`);
+    this.dibujarCarne(doc, trabajador, logo);
+    doc.save(`carne_${trabajador.codigoBarras || trabajador.idTrabajador}.pdf`);
   }
-  // ── CARGA LOGOS ──────────────────────────────────────────────
-  private async cargarLogos(): Promise<Logos> {
-    const [verde, negro] = await Promise.all([
-      this.cargarImagen('/logo_avendacom_verde.png'),
-      this.cargarImagen('/logo_avendacom_negro.png'),
-    ]);
-    return { verde, negro };
-  }
-  // ── DIBUJO PAR ───────────────────────────────────────────────
-  private dibujarPar(doc: jsPDF, t: any, logos: Logos): void {
+
+  // ════════════════════════════════════════════════════════════
+  // DIBUJO
+  // ════════════════════════════════════════════════════════════
+
+  private dibujarCarne(doc: jsPDF, t: any, logo: LogoData | null): void {
+    // El código lo entrega el backend; aquí no se construye.
+    const codigo = String(t.codigoBarras ?? '').trim();
+    const radio  = 3;
+    const [cr, cg, cb] = this.hex2rgb('#8cc63f');
+
     doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, W * 2, H, 'F');
+    doc.rect(0, 0, W, H, 'F');
 
-    this.dibujarCarne(doc, 0, t, 'IN', logos.verde, '#8cc63f');
-    this.dibujarCarne(doc, W, t, 'OU', logos.negro, '#808080');
-  }
-  // ── CARNÉ ────────────────────────────────────────────────────
-  private dibujarCarne(
-    doc:        jsPDF,
-    ox:         number,
-    t:          any,
-    tipo:       'IN' | 'OU',
-    logo:       LogoData | null,
-    bandaColor: string
-  ): void {
-    const esEntrada = tipo === 'IN';
-    const codigo    = `${t.idTrabajador}${tipo}`;
-    const radio     = 3;
-    const [cr, cg, cb] = this.hex2rgb(bandaColor);
-
-    // ── Borde de color ──
-    doc.setFillColor(255, 255, 255);
+    // ── Borde ──
     doc.setDrawColor(cr, cg, cb);
     doc.setLineWidth(1);
-    doc.roundedRect(ox + 0.75, 0.75, W - 1.05, H - 1.1, radio, radio, 'FD');
+    doc.roundedRect(0.75, 0.75, W - 1.5, H - 1.5, radio, radio, 'FD');
 
     // ── Logo ──
     if (logo) {
       const aspect = logo.width / logo.height;
-      let lw       = W - 6;
-      let lh       = lw / aspect;
-      const maxH   = 16;
-
-      if (lh > maxH) {
-        lh = maxH;
-        lw = lh * aspect;
-      }
-
+      let lw = W - 6;
+      let lh = lw / aspect;
+      const maxH = 16;
+      if (lh > maxH) { lh = maxH; lw = lh * aspect; }
       try {
-        doc.addImage(logo.dataUrl, 'PNG', ox + (W - lw) / 2, 6, lw, lh, undefined, 'FAST');
-      } catch (_) {}
+        doc.addImage(logo.dataUrl, 'PNG', (W - lw) / 2, 6, lw, lh, undefined, 'FAST');
+      } catch (_) { /* logo opcional */ }
     }
 
     // ── Nombre ──
-    const nombres    = `${t.pNombre || ''} ${t.sNombre || ''}`.trim() || '—';
-    const apellidos  = `${t.aPaterno || ''} ${t.aMaterno || ''}`.trim() || '—';
+    const nombres   = `${t.pNombre || ''} ${t.sNombre || ''}`.trim() || '—';
+    const apellidos = `${t.aPaterno || ''} ${t.aMaterno || ''}`.trim() || '—';
 
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.text(nombres,   ox + W / 2, 36, { align: 'center', maxWidth: W - 4 });
-    doc.text(apellidos, ox + W / 2, 43, { align: 'center', maxWidth: W - 4 });
+    doc.text(nombres,   W / 2, 36, { align: 'center', maxWidth: W - 4 });
+    doc.text(apellidos, W / 2, 43, { align: 'center', maxWidth: W - 4 });
 
-    // ── Puesto ──
+    // ── Puesto y área ──
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(150, 150, 150);
-    doc.text(t.puestoNombre || '—', ox + W / 2, 49, { align: 'center', maxWidth: W - 4 });
+    doc.text(t.puestoNombre || '—', W / 2, 49, { align: 'center', maxWidth: W - 4 });
+    doc.text(t.areaNombre   || '—', W / 2, 53, { align: 'center', maxWidth: W - 4 });
 
-    // ── Área ──
-    doc.text(t.areaNombre || '—', ox + W / 2, 53, { align: 'center', maxWidth: W - 4 });
-
-    // ── DNI ──
+    // ── Documento ──
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
-    doc.text(`DNI: ${t.nroDocumento || '—'}`, ox + W / 2, 58, { align: 'center' });
+    doc.text(`DNI: ${t.nroDocumento || '—'}`, W / 2, 58, { align: 'center' });
 
-    // ── Banda ENTRADA / SALIDA ──
+    // ── Banda ──
+    // Sin ENTRADA ni SALIDA: el mismo carné sirve para ambas.
     const bandaY = 62;
     const bandaH = 8;
     doc.setFillColor(cr, cg, cb);
-    doc.rect(ox + 0.75, bandaY, W - 1.5, bandaH, 'F');
+    doc.rect(0.75, bandaY, W - 1.5, bandaH, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text(esEntrada ? 'ENTRADA' : 'SALIDA', ox + W / 2, bandaY + 5.5, { align: 'center' });
+    doc.text('CONTROL DE ASISTENCIA', W / 2, bandaY + 5.5, { align: 'center' });
 
     // ── Código de barras ──
-    const barcodeW = W - 22;
-    const barcodeH = 10;
-    const barcodeY = bandaY + bandaH + 2.25;
-    doc.addImage(
-      this.barcodeHD(codigo), 'PNG',
-      ox + (W - barcodeW) / 2, barcodeY,
-      barcodeW, barcodeH,
-      undefined, 'FAST'
-    );
+    if (codigo) {
+      const barcodeW = W - 22;
+      const barcodeH = 10;
+      const barcodeY = bandaY + bandaH + 2.25;
+      doc.addImage(
+        this.barcodeHD(codigo), 'PNG',
+        (W - barcodeW) / 2, barcodeY,
+        barcodeW, barcodeH,
+        undefined, 'FAST'
+      );
+    } else {
+      // Un trabajador sin código no puede marcar: findByCodigoBarras no lo
+      // encuentra. Mejor decirlo en el carné que imprimir uno inservible.
+      doc.setTextColor(200, 60, 60);
+      doc.setFontSize(8);
+      doc.text('SIN CÓDIGO ASIGNADO', W / 2, bandaY + bandaH + 8, { align: 'center' });
+    }
   }
 
-  // ── BARCODE HD ───────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // BARCODE
+  // ════════════════════════════════════════════════════════════
 
+  /**
+   * Genera el código a 6x y lo reduce, para que el PDF salga nítido en
+   * impresión. Un barcode al tamaño final se ve dentado y algunos
+   * lectores fallan.
+   */
   private barcodeHD(codigo: string): string {
     const sc  = 6;
     const src = document.createElement('canvas');
@@ -165,21 +180,27 @@ export class CarneService {
     return out.toDataURL('image/png');
   }
 
-  // ── UTILIDADES ───────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // UTILIDADES
+  // ════════════════════════════════════════════════════════════
 
   private cargarImagen(src: string): Promise<LogoData | null> {
     return new Promise(resolve => {
-      const img       = new Image();
+      const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas  = document.createElement('canvas');
         canvas.width  = img.naturalWidth;
         canvas.height = img.naturalHeight;
         canvas.getContext('2d')!.drawImage(img, 0, 0);
-        resolve({ dataUrl: canvas.toDataURL('image/png'), width: img.naturalWidth, height: img.naturalHeight });
+        resolve({
+          dataUrl: canvas.toDataURL('image/png'),
+          width:   img.naturalWidth,
+          height:  img.naturalHeight
+        });
       };
       img.onerror = () => resolve(null);
-      img.src     = src;
+      img.src = src;
     });
   }
 

@@ -4,17 +4,36 @@
   <div class="reporte-header">
     <div>
       <h2 class="reporte-titulo">Reporte de Asistencias</h2>
-      <p class="reporte-subtitulo">Filtra y exporta el registro de asistencias a Excel</p>
+      <p class="reporte-subtitulo">Filtra el registro de asistencias y expórtalo a Excel o PDF</p>
     </div>
     @if (buscado && registros.length > 0) {
-      <button class="btn-exportar" [disabled]="isExportando" (click)="exportar()">
-        @if (isExportando) {
-          <span class="spinner"></span> Exportando...
-        } @else {
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar Excel ({{ totalRegistros }})
-        }
-      </button>
+      <!--
+        Los dos botones van agrupados: son la misma acción en dos
+        formatos. Repartidos a lo ancho de la cabecera parecían dos
+        funciones distintas.
+      -->
+      <div class="acciones-exportar">
+        <button class="btn-exportar" [disabled]="isExportando" (click)="exportar()">
+          @if (isExportando) {
+            <span class="spinner"></span> Exportando...
+          } @else {
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Excel ({{ totalRegistros }})
+          }
+        </button>
+
+        <!--
+          El PDF se genera a partir de los datos, no imprimiendo la
+          pantalla: la impresión del navegador reproducía el menú, los
+          filtros y los botones, y recortaba la tabla al ancho de la hoja.
+        -->
+        <button class="btn-exportar btn-pdf"
+                [disabled]="isExportando || registros.length === 0"
+                (click)="exportarPDF()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          PDF
+        </button>
+      </div>
     }
   </div>
 
@@ -95,11 +114,19 @@
       </div>
       <div class="resumen-card tarde">
         <span class="resumen-valor">{{ totalTarde }}</span>
-        <span class="resumen-label">Tardanzas</span>
+        <span class="resumen-label">
+          Tardanzas
+          <small *ngIf="minutosTardanza > 0">({{ formatMin(minutosTardanza) }})</small>
+        </span>
       </div>
       <div class="resumen-card falta">
         <span class="resumen-valor">{{ totalFaltas }}</span>
         <span class="resumen-label">Faltas</span>
+      </div>
+
+      <div class="resumen-card card-permiso">
+        <span class="resumen-valor">{{ totalPermisos }}</span>
+        <span class="resumen-label">Permisos y justificadas</span>
       </div>
     </div>
 
@@ -125,8 +152,8 @@
           <tbody>
             @for (r of registros; track r.idTrabajador + r.fecha) {
               <tr>
-                <td class="fecha-cell">{{ r.fecha }}</td>
-                <td class="dia-cell">{{ r.diaSemana }}</td>
+                <td class="fecha-cell">{{ r.fecha | fechaPe }}</td>
+                <td class="dia-cell">{{ diaSemana(r.fecha) }}</td>
                 <td class="nombre-cell">{{ r.nombreCompleto }}</td>
                 <td class="doc-cell">{{ r.nroDocumento }}</td>
                 <td>{{ r.areaNombre }}</td>
@@ -135,8 +162,8 @@
                 <td class="hora-cell">{{ r.horaSalida  ?? '—' }}</td>
                 <td class="hora-cell">{{ minutosAHoras(r.minutosLaborados) }}</td>
                 <td>
-                  <span class="estado-badge" [ngClass]="estadoClass(r.estado)">
-                    {{ r.estadoLabel }}
+                  <span class="estado-badge" [ngClass]="estadoClass(r)">
+                    {{ etiquetaEstado(r) }}
                   </span>
                 </td>
                 <td class="obs-cell" [title]="r.observacion">{{ r.observacion || '—' }}</td>

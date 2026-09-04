@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
 import { UsuarioService } from '../../../core/services/usuario.service';
+import { CatalogoService, CatalogoSimple } from '../../../core/services/catalogo.service';
 
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 
@@ -23,6 +24,7 @@ export class TrabajadorListComponent implements OnInit {
   private authService      = inject(AuthService);
   private trabajadorService = inject(TrabajadorService);
   private usuarioService   = inject(UsuarioService);
+  private catalogoService  = inject(CatalogoService);
   private router           = inject(Router);
   private cdr              = inject(ChangeDetectorRef);
   private fb               = inject(FormBuilder);
@@ -50,6 +52,24 @@ export class TrabajadorListComponent implements OnInit {
   mostrarModalCese       = false;
   trabajadorParaCese: any = null;
   motivoCese             = '';
+
+  /**
+   * Catálogo de motivos de cese (RN-11).
+   *
+   * El campo era texto libre, de modo que el catálogo cargado en Tablas
+   * Maestras no se usaba nunca: el backend resuelve el motivo por
+   * coincidencia exacta de nombre, y "renuncia", "Renuncia voluntaria" y
+   * "renunció" acababan como tres textos sueltos distintos en
+   * detalleMotivoCese.
+   */
+  motivosCese: CatalogoSimple[] = [];
+
+  /** Detalle libre, solo cuando el motivo elegido es "Otro". */
+  detalleMotivoCese      = '';
+
+  get requiereDetalle(): boolean {
+    return this.motivoCese.trim().toLowerCase() === 'otro';
+  }
   fechaCese              = '';
   today = new Date().toISOString().split('T')[0];
 
@@ -60,6 +80,12 @@ export class TrabajadorListComponent implements OnInit {
   puestosReingreso: any[]      = [];
   areaSeleccionadaReingreso: number | ''  = '';
   puestoSeleccionadoReingreso: number | '' = '';
+
+  /**
+   * Si está activo, el trabajador vuelve a su puesto anterior y no se
+   * envía idPuesto. Es el caso habitual del reingreso (RN-12).
+   */
+  conservarPuesto = true;
 
   // --- MODAL DETALLE ---
   mostrarModalDetalle    = false;
@@ -109,6 +135,21 @@ export class TrabajadorListComponent implements OnInit {
   isProcesandoReset        = false;
 
   ngOnInit(): void {
+    this.catalogoService.getMotivosCese().subscribe({
+      next: (m: CatalogoSimple[]) => {
+        // "Otro" siempre al final: es el descarte para lo que no encaja en
+        // ningún motivo tipificado, no una opción más de la lista. Puesto
+        // entre las demás, invita a elegirlo por comodidad y el catálogo
+        // pierde sentido.
+        this.motivosCese = [...m].sort((a, b) => {
+          const aOtro = a.nombre.trim().toLowerCase() === 'otro';
+          const bOtro = b.nombre.trim().toLowerCase() === 'otro';
+          if (aOtro !== bOtro) return aOtro ? 1 : -1;
+          return a.nombre.localeCompare(b.nombre, 'es');
+        });
+        this.cdr.detectChanges();
+      }
+    });
     this.rolUsuario = this.authService.getRolUsuario() || '';
     this.cargarTrabajadores();
 
@@ -359,6 +400,7 @@ export class TrabajadorListComponent implements OnInit {
   abrirModalCese(trabajador: any) {
     this.trabajadorParaCese = trabajador;
     this.motivoCese         = '';
+    this.detalleMotivoCese  = '';
     this.fechaCese          = new Date().toISOString().split('T')[0]; // Hoy por defecto
     this.mostrarModalCese   = true;
     this.cdr.detectChanges();
@@ -368,6 +410,7 @@ export class TrabajadorListComponent implements OnInit {
     this.mostrarModalCese   = false;
     this.trabajadorParaCese = null;
     this.motivoCese         = '';
+    this.detalleMotivoCese  = '';
     this.fechaCese          = '';
     this.cdr.detectChanges();
   }
@@ -380,7 +423,12 @@ procesarCese() {
     }
 
     const id     = this.trabajadorParaCese.idTrabajador;
-    const motivo = this.motivoCese.trim() || 'Cese de actividades';
+    // Se envía el nombre del catálogo tal cual: el backend lo resuelve por
+    // coincidencia exacta. Cuando es "Otro", se adjunta el detalle escrito.
+    const base   = this.motivoCese.trim();
+    const motivo = this.requiereDetalle && this.detalleMotivoCese.trim()
+      ? `${base}: ${this.detalleMotivoCese.trim()}`
+      : base;
 
     this.isProcesandoModal = true;
     this.cdr.detectChanges();
@@ -455,6 +503,7 @@ procesarCese() {
     this.trabajadorParaReingreso       = trabajador;
     this.areaSeleccionadaReingreso     = '';
     this.puestoSeleccionadoReingreso   = '';
+    this.conservarPuesto               = true;
     this.puestosReingreso              = [];
     this.mostrarModalReingreso         = true;
 
@@ -487,11 +536,20 @@ procesarCese() {
     }
   }
 
+  /**
+   * Reingreso. El puesto es OPCIONAL (RN-12): sin indicarlo, el backend
+   * conserva el del registro anterior.
+   *
+   * El formulario lo exigía siempre, lo que obligaba a volver a elegir
+   * área y puesto incluso cuando el trabajador volvía al mismo sitio.
+   */
   procesarReingreso() {
-    if (!this.trabajadorParaReingreso || !this.puestoSeleccionadoReingreso) return;
+    if (!this.trabajadorParaReingreso) return;
 
-    const id      = this.trabajadorParaReingreso.idTrabajador;
-    const idPuesto = Number(this.puestoSeleccionadoReingreso);
+    const id = this.trabajadorParaReingreso.idTrabajador;
+    const idPuesto: number | undefined = this.conservarPuesto || !this.puestoSeleccionadoReingreso
+      ? undefined
+      : Number(this.puestoSeleccionadoReingreso);
 
     this.isProcesandoModal = true;
     this.cdr.detectChanges();

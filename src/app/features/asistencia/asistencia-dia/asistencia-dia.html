@@ -34,6 +34,21 @@
       </div>
     </div>
 
+    <!--
+      Jornadas programadas del día que todavía no tienen marcación. Antes se
+      contaban como "a tiempo", lo que inflaba el número de puntuales con
+      gente que aún no había llegado.
+    -->
+    <div class="resumen-card" [class.activo]="filtroEstado === 'PENDIENTE'" (click)="filtrarPorEstado('PENDIENTE')">
+      <div class="resumen-icono azul">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="resumen-datos">
+        <span class="resumen-numero">{{ totalPendientes }}</span>
+        <span class="resumen-label">Sin marcar</span>
+      </div>
+    </div>
+
     <div class="resumen-card" [class.activo]="filtroEstado === 'TARDE'" (click)="filtrarPorEstado('TARDE')">
       <div class="resumen-icono amarillo">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -74,6 +89,7 @@
     <table class="custom-table">
       <thead>
         <tr>
+          <th style="text-align:center">Fecha</th>
           <th>Trabajador</th>
           <th>Área / Puesto</th>
           <th style="text-align:center">Entrada</th>
@@ -85,6 +101,16 @@
       <tbody>
         @for (a of asistenciasFiltradas; track a.idAsistencia) {
           <tr>
+            <!--
+              Fecha de la jornada. Con dos turnos en paralelo, la lista
+              incluye la nocturna iniciada la víspera: sin esta columna no
+              hay forma de distinguirla de una de hoy.
+            -->
+            <td style="text-align:center">
+              <span class="fecha-badge" [class.fecha-anterior]="esDeOtroDia(a.fecha)">
+                {{ fechaCorta(a.fecha) }}
+              </span>
+            </td>
             <td>
               <div class="trabajador-nombre">{{ a.nombreCompleto }}</div>
               <div class="trabajador-doc">{{ a.nroDocumento }}</div>
@@ -113,7 +139,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="6" style="text-align:center; padding: 40px; color: #64748b;">
+            <td colspan="7" style="text-align:center; padding: 40px; color: #64748b;">
               @if (isLoading) {
                 <strong>Cargando registros...</strong>
               } @else {
@@ -124,6 +150,11 @@
         }
       </tbody>
     </table>
+
+    <p class="nota-ventana">
+      Se muestran las jornadas de las últimas 24 horas, de la más reciente a la
+      más antigua. Las jornadas aún sin marcar van al final.
+    </p>
   </div>
 
 </div>

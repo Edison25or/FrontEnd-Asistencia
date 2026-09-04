@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { GrupoService } from '../../../core/services/grupo.service';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
 import { AuthService } from '../../../core/services/auth';
+import { MaestrosService } from '../../../core/services/maestros.service';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -18,11 +19,13 @@ export class GrupoListComponent implements OnInit {
   private grupoService      = inject(GrupoService);
   private trabajadorService = inject(TrabajadorService);
   private authService       = inject(AuthService);
+  private maestrosService   = inject(MaestrosService);
   private fb                = inject(FormBuilder);
   private cdr               = inject(ChangeDetectorRef);
 
   grupos: any[]       = [];
   trabajadores: any[] = [];
+  areas: any[]        = [];
   isLoading           = true;
   rolUsuario          = '';
 
@@ -57,7 +60,10 @@ export class GrupoListComponent implements OnInit {
   initForm() {
     this.grupoForm = this.fb.group({
       nombre:      ['', [Validators.required, Validators.maxLength(50)]],
-      descripcion: ['', Validators.maxLength(150)]
+      descripcion: ['', Validators.maxLength(150)],
+      // Obligatoria: todos los miembros de un grupo deben pertenecer a la
+      // misma área (RN-20). Sin este campo el backend rechaza el alta.
+      idArea:      [null, Validators.required]
     });
   }
 
@@ -66,11 +72,13 @@ export class GrupoListComponent implements OnInit {
     this.isLoading = true;
     forkJoin({
       grupos:       this.grupoService.getAll(),
-      trabajadores: this.trabajadorService.getTrabajadores(0, 500)
+      trabajadores: this.trabajadorService.getTrabajadores(0, 500),
+      areas:        this.maestrosService.getAreas()
     }).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.grupos       = res.grupos;
         this.trabajadores = res.trabajadores.content || res.trabajadores;
+        this.areas        = res.areas;
         this.isLoading    = false;
         this.cdr.detectChanges();
       },
@@ -91,17 +99,44 @@ export class GrupoListComponent implements OnInit {
     return ocupados;
   }
 
-  // ── Construir paneles ─────────────────────────────────────
+  /**
+   * Construye los dos paneles.
+   *
+   * Los disponibles se filtran además por ÁREA (RN-20): un grupo es de una
+   * sola área, y el backend rechaza el alta si algún miembro es de otra.
+   * Filtrar aquí evita ofrecer a alguien que el servidor va a rechazar.
+   */
   private construirPaneles(idsEnGrupo: Set<number>, excluirGrupoId: number | null) {
     this.terminoBusqueda = '';
     const idsOcupados    = this.getIdsOcupados(excluirGrupoId);
+    const idArea         = this.grupoForm.get('idArea')?.value;
 
     this.panelEnGrupo     = this.trabajadores.filter(t => idsEnGrupo.has(t.idTrabajador));
-    // Disponibles: sin grupo propio Y sin grupo ajeno
     this.panelDisponibles = this.trabajadores.filter(t =>
-      !idsEnGrupo.has(t.idTrabajador) && !idsOcupados.has(t.idTrabajador)
+      !idsEnGrupo.has(t.idTrabajador)
+      && !idsOcupados.has(t.idTrabajador)
+      && (!idArea || this.areaDe(t) === idArea)
     );
     this.cdr.detectChanges();
+  }
+
+  /** Área del trabajador, vía su puesto. */
+  private areaDe(t: any): number | null {
+    return t?.idArea ?? t?.puesto?.area?.idArea ?? t?.area?.idArea ?? null;
+  }
+
+  /**
+   * Al cambiar el área se rehacen los paneles: los que ya estaban
+   * seleccionados y no pertenecen a la nueva área vuelven a disponibles.
+   */
+  onAreaChange() {
+    const idArea = this.grupoForm.get('idArea')?.value;
+    const sobran = this.panelEnGrupo.filter(t => this.areaDe(t) !== idArea);
+    if (sobran.length > 0) {
+      this.panelEnGrupo = this.panelEnGrupo.filter(t => this.areaDe(t) === idArea);
+    }
+    const ids = new Set<number>(this.panelEnGrupo.map(t => t.idTrabajador));
+    this.construirPaneles(ids, this.grupoEditandoId);
   }
 
   // ── Getters filtrados para búsqueda ───────────────────────
@@ -145,7 +180,7 @@ export class GrupoListComponent implements OnInit {
     this.modoEdicion     = false;
     this.grupoEditandoId = null;
     this.errorModal      = '';
-    this.grupoForm.reset();
+    this.grupoForm.reset({ nombre: '', descripcion: '', idArea: null });
     this.construirPaneles(new Set(), null);
     this.mostrarModal = true;
   }
@@ -154,7 +189,8 @@ export class GrupoListComponent implements OnInit {
     this.modoEdicion     = true;
     this.grupoEditandoId = grupo.idGrupo;
     this.errorModal      = '';
-    this.grupoForm.patchValue({ nombre: grupo.nombre, descripcion: grupo.descripcion });
+    this.grupoForm.patchValue({
+      nombre: grupo.nombre, descripcion: grupo.descripcion, idArea: grupo.idArea });
     const idsActuales = new Set<number>(grupo.trabajadores?.map((t: any) => t.idTrabajador) || []);
     this.construirPaneles(idsActuales, grupo.idGrupo);
     this.mostrarModal = true;

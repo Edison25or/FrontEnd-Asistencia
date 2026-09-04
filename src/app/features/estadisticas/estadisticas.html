@@ -1,0 +1,390 @@
+<div class="est-container">
+
+  <!-- ══ CABECERA Y FILTROS ═════════════════════════════════ -->
+  <div class="est-header">
+    <div>
+      <h2 class="est-titulo">Estadísticas</h2>
+      <p class="est-subtitulo">Indicadores de asistencia para la toma de decisiones</p>
+    </div>
+
+    <div class="est-filtros">
+      <div class="rango-btns">
+        <button [class.rango-on]="rango === '7d'"  (click)="aplicarRango('7d')">7 días</button>
+        <button [class.rango-on]="rango === '15d'" (click)="aplicarRango('15d')">15 días</button>
+        <button [class.rango-on]="rango === '30d'" (click)="aplicarRango('30d')">30 días</button>
+        <button [class.rango-on]="rango === 'mes'" (click)="aplicarRango('mes')">Este mes</button>
+      </div>
+
+      <input type="date" class="input-fecha" [(ngModel)]="desde"
+             (ngModelChange)="rango = 'custom'">
+      <span class="sep-fecha">→</span>
+      <input type="date" class="input-fecha" [(ngModel)]="hasta"
+             (ngModelChange)="rango = 'custom'">
+
+      <!-- El Jefe queda restringido a su área, así que no se le ofrece el filtro. -->
+      @if (!esJefe()) {
+        <select class="input-area" [(ngModel)]="idArea">
+          <option [ngValue]="null">Todas las áreas</option>
+          @for (a of areas; track a.idArea) {
+            <option [ngValue]="a.idArea">{{ a.area }}</option>
+          }
+        </select>
+      }
+
+      <button class="btn-aplicar" [disabled]="isLoading" (click)="cargar()">
+        {{ isLoading ? 'Cargando…' : 'Aplicar' }}
+      </button>
+    </div>
+  </div>
+
+  @if (errorGlobal) { <div class="alerta-error">{{ errorGlobal }}</div> }
+
+  @if (isLoading && !datos) {
+    <div class="estado-vacio">Calculando estadísticas…</div>
+  }
+
+  @if (datos && !hayDatos) {
+    <div class="estado-vacio">
+      No hay jornadas registradas en el período seleccionado.
+      @if (datos.areaNombre) { El filtro está en el área {{ datos.areaNombre }}. }
+    </div>
+  }
+
+  @if (hayDatos && datos) {
+
+    <!-- ══ INDICADORES ══════════════════════════════════════ -->
+    <div class="kpi-grid">
+
+      <div class="kpi kpi-destacado">
+        <div class="kpi-label">Puntualidad</div>
+        <div class="kpi-valor" [ngClass]="colorTasa(datos.tasaPuntualidad)">
+          {{ datos.tasaPuntualidad }}%
+        </div>
+        <!--
+          Sobre las jornadas trabajadas, no sobre el total programado: una
+          falta no es una impuntualidad, y mezclarlas haría que un día con
+          muchas ausencias justificadas pareciera un problema de
+          puntualidad.
+        -->
+        <div class="kpi-nota">
+          {{ datos.jornadasTrabajadas - datos.totalTardanzas }} de
+          {{ datos.jornadasTrabajadas }} jornadas trabajadas sin tardanza
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-label">Tardanzas</div>
+        <div class="kpi-valor">{{ datos.totalTardanzas }}</div>
+        <div class="kpi-nota">{{ formatMin(datos.minutosTardanza) }} acumuladas</div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-label">Faltas injustificadas</div>
+        <div class="kpi-valor" [class.kpi-rojo]="datos.faltasInjustificadas > 0">
+          {{ datos.faltasInjustificadas }}
+        </div>
+        <div class="kpi-nota">
+          {{ datos.diasPermiso }} permisos · {{ datos.diasFaltaJustificada }} justificadas
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-label">Asistencias perfectas</div>
+        <div class="kpi-valor">{{ datos.asistenciasPerfectas }}</div>
+        <div class="kpi-nota">
+          de {{ datos.trabajadoresConJornadas }} trabajadores ({{ pctPerfectas }}%)
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-label">Horas trabajadas</div>
+        <div class="kpi-valor">{{ datos.horasTrabajadas }}</div>
+        <div class="kpi-nota" [class.nota-alerta]="saldoGlobal > 0">
+          {{ formatMin(saldoGlobal) }} frente a lo programado
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-label">Horas extra</div>
+        <div class="kpi-valor">{{ datos.horasExtra }}</div>
+        <!--
+          La hora extra pendiente es trabajo hecho que todavía no se
+          reconoce. Verla acumularse es la señal de que la bandeja de
+          revisión se está quedando atrás (RN-33).
+        -->
+        @if (datos.minutosExtraPendientes > 0) {
+          <div class="kpi-nota nota-alerta">
+            {{ formatMin(datos.minutosExtraPendientes) }} sin validar
+          </div>
+        } @else {
+          <div class="kpi-nota">todo validado</div>
+        }
+      </div>
+    </div>
+
+    <!-- Aviso de pendientes -->
+    @if (datos.pendientesRevision > 0) {
+      <div class="aviso-pendientes">
+        <strong>{{ datos.pendientesRevision }} registro(s) pendientes de revisión</strong>
+        @if (datos.marcacionesIncompletas > 0) {
+          , de los cuales {{ datos.marcacionesIncompletas }} son marcaciones incompletas
+        }.
+        Bloquean el cierre de la quincena hasta que se resuelvan.
+      </div>
+    }
+
+    <!-- ══ TENDENCIA DIARIA ═════════════════════════════════ -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Tendencia diaria</h3>
+        <p>
+          Distingue un mal día de un problema sostenido. Las barras usan escala
+          común, de modo que las alturas son comparables entre sí.
+        </p>
+      </div>
+
+      <div class="grafico">
+        <div class="grafico-barras">
+          @for (p of datos.tendenciaDiaria; track p.fecha; let i = $index) {
+            <div class="col-dia" [style.width.px]="anchoBarra" [title]="tooltipDia(p)">
+              <div class="barras-apiladas">
+                @if (p.faltas > 0) {
+                  <div class="barra barra-falta"
+                       [style.height.px]="alturaBarra(p.faltas)"></div>
+                }
+                @if (p.tardanzas > 0) {
+                  <div class="barra barra-tarde"
+                       [style.height.px]="alturaBarra(p.tardanzas)"></div>
+                }
+                <div class="barra barra-ok"
+                     [style.height.px]="alturaBarra(p.trabajadas - p.tardanzas)"></div>
+              </div>
+              <div class="col-etiqueta" [class.col-feriado]="p.esFeriado">
+                @if (mostrarEtiqueta(i)) { {{ p.fecha | slice:8:10 }} }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="leyenda">
+          <span><i class="pt pt-ok"></i> Puntual</span>
+          <span><i class="pt pt-tarde"></i> Con tardanza</span>
+          <span><i class="pt pt-falta"></i> Falta injustificada</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CORTES POR ÁREA Y TURNO ══════════════════════════ -->
+    <div class="panel-doble">
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Por área</h3>
+          <p>Dónde se concentran las horas y dónde la puntualidad se resiente.</p>
+        </div>
+
+        <table class="tabla-corte">
+          <thead>
+            <tr>
+              <th>Área</th>
+              <th class="th-num">Personal</th>
+              <th class="th-num">Horas</th>
+              <th class="th-num">Puntualidad</th>
+              <th class="th-num">Faltas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of datos.porArea; track a.area) {
+              <tr>
+                <td>
+                  <div class="celda-nombre">{{ a.area }}</div>
+                  <div class="barra-inline">
+                    <span [style.width.%]="proporcion(a.minutosTrabajados, maxHorasArea)"></span>
+                  </div>
+                </td>
+                <td class="td-num">{{ a.trabajadores }}</td>
+                <td class="td-num td-fuerte">{{ a.horasTrabajadas }}</td>
+                <td class="td-num">
+                  <span class="pill-tasa" [ngClass]="colorTasa(a.tasaPuntualidad)">
+                    {{ a.tasaPuntualidad }}%
+                  </span>
+                </td>
+                <td class="td-num" [class.td-rojo]="a.faltas > 0">{{ a.faltas }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Por turno</h3>
+          <p>Reparto entre turnos, con la hora extra separada de la normal.</p>
+        </div>
+
+        <table class="tabla-corte">
+          <thead>
+            <tr>
+              <th>Turno</th>
+              <th class="th-num">Jornadas</th>
+              <th class="th-num">Normales</th>
+              <th class="th-num">Extra</th>
+              <th class="th-num">Puntualidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of datos.porTurno; track t.turno) {
+              <tr>
+                <td>
+                  <div class="celda-nombre">{{ t.turno }}</div>
+                  <div class="barra-inline">
+                    <span [style.width.%]="proporcion(t.minutosNormales + t.minutosExtra, maxHorasTurno)"></span>
+                  </div>
+                  @if (t.minutosFeriado > 0) {
+                    <div class="celda-nota">{{ formatMin(t.minutosFeriado) }} en feriado</div>
+                  }
+                </td>
+                <td class="td-num">{{ t.jornadas }}</td>
+                <td class="td-num td-fuerte">{{ t.horasNormales }}</td>
+                <td class="td-num td-extra">{{ t.horasExtra }}</td>
+                <td class="td-num">
+                  <span class="pill-tasa" [ngClass]="colorTasa(t.tasaPuntualidad)">
+                    {{ t.tasaPuntualidad }}%
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ SOBRECARGA ═══════════════════════════════════════ -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Sobrecarga</h3>
+        <!--
+          Ordenado por saldo y no por horas totales: quien trabaja más
+          porque su turno es más largo no está sobrecargado; lo está quien
+          excede lo que se le programó.
+        -->
+        <p>
+          Quién acumula horas por encima de lo programado. Se ordena por el exceso,
+          no por el total: un turno largo no es sobrecarga.
+        </p>
+      </div>
+
+      @if (datos.sobrecarga.length === 0) {
+        <div class="estado-vacio-sm">
+          Nadie supera sus horas programadas en este período.
+        </div>
+      } @else {
+        <table class="tabla-corte">
+          <thead>
+            <tr>
+              <th>Trabajador</th>
+              <th class="th-num">Jornadas</th>
+              <th class="th-num">Trabajadas</th>
+              <th class="th-num">Exceso</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of datos.sobrecarga; track f.idTrabajador) {
+              <tr>
+                <td>
+                  <div class="celda-nombre">{{ f.nombre }}</div>
+                  <div class="celda-nota">{{ f.puesto }} — {{ f.area }}</div>
+                  <div class="barra-inline barra-alerta">
+                    <span [style.width.%]="proporcion(f.saldoMinutos, maxSaldo)"></span>
+                  </div>
+                </td>
+                <td class="td-num">{{ f.jornadas }}</td>
+                <td class="td-num">{{ f.horasTrabajadas }}</td>
+                <td class="td-num td-fuerte td-alerta">{{ f.saldoHoras }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- ══ RANKINGS ═════════════════════════════════════════ -->
+    <div class="panel-doble">
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Tardanzas acumuladas</h3>
+          <p>Ordenado por minutos, no por número: diez llegadas de dos minutos
+             no son lo mismo que dos de media hora.</p>
+        </div>
+
+        @if (datos.rankingTardanzas.length === 0) {
+          <div class="estado-vacio-sm">Sin tardanzas en el período.</div>
+        } @else {
+          <table class="tabla-corte">
+            <thead>
+              <tr>
+                <th>Trabajador</th>
+                <th class="th-num">Veces</th>
+                <th class="th-num">Minutos</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of datos.rankingTardanzas; track f.idTrabajador) {
+                <tr>
+                  <td>
+                    <div class="celda-nombre">{{ f.nombre }}</div>
+                    <div class="celda-nota">{{ f.area }}</div>
+                  </td>
+                  <td class="td-num">{{ f.tardanzas }}</td>
+                  <td class="td-num td-fuerte">{{ formatMin(f.minutosTardanza) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Faltas injustificadas</h3>
+          <p>Solo las que el cierre diario no pudo cubrir con permiso, falta
+             justificada ni feriado.</p>
+        </div>
+
+        @if (datos.rankingFaltas.length === 0) {
+          <div class="estado-vacio-sm">Sin faltas injustificadas en el período.</div>
+        } @else {
+          <table class="tabla-corte">
+            <thead>
+              <tr>
+                <th>Trabajador</th>
+                <th class="th-num">Faltas</th>
+                <th class="th-num">Jornadas</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of datos.rankingFaltas; track f.idTrabajador) {
+                <tr>
+                  <td>
+                    <div class="celda-nombre">{{ f.nombre }}</div>
+                    <div class="celda-nota">{{ f.area }}</div>
+                  </td>
+                  <td class="td-num td-fuerte td-rojo">{{ f.faltas }}</td>
+                  <td class="td-num">{{ f.jornadas }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+
+    <p class="nota-pie">
+      Período del {{ datos.desde }} al {{ datos.hasta }} ({{ datos.diasPeriodo }} días)
+      @if (datos.areaNombre) { · área {{ datos.areaNombre }} }.
+      Los umbrales de color de puntualidad son una convención de esta pantalla,
+      no una meta definida en el análisis.
+    </p>
+  }
+</div>

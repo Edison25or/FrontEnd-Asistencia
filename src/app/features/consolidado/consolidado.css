@@ -148,3 +148,39 @@
   color: #64748b;
   cursor: not-allowed;
 }
+
+/* ── Columna de horas en feriado ─────────────────────────── */
+/* Rosa, el mismo color con que se marca el feriado en la bandeja de
+   revisión, para que ambas pantallas se lean igual. Se muestra siempre,
+   aunque el período no tenga feriados: un cero también es información. */
+.td-feriado {
+  color: #9d174d;
+  font-weight: 600;
+}
+
+
+/* ── Observación recortada ───────────────────────────────── */
+.obs-corta {
+  display: block;
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
+  margin-top: 3px;
+}
+
+
+/* ── Aviso de vista previa ───────────────────────────────── */
+/* Azul y no verde: el verde queda para lo confirmado. Aquí nada se ha
+   guardado todavía. */
+.aviso-previa {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 10px;
+  padding: 11px 15px;
+  font-size: .86rem;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}

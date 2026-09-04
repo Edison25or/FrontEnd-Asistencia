@@ -7,12 +7,22 @@
 .reporte-titulo    { font-size: 1.4rem; font-weight: 700; color: #1e293b; }
 .reporte-subtitulo { font-size: 0.875rem; color: #64748b; margin-top: 4px; }
 
+/* Los dos botones forman un grupo: son la misma acción en dos formatos,
+   así que se presentan juntos y no repartidos a lo ancho de la cabecera. */
+.acciones-exportar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .btn-exportar {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 7px;
   background: #16a34a; color: white; border: none;
-  padding: 10px 20px; border-radius: 8px;
-  font-weight: 600; font-size: 0.9rem; cursor: pointer;
-  transition: background 0.2s; min-width: 180px; justify-content: center;
+  padding: 10px 16px; border-radius: 8px;
+  font-weight: 600; font-size: 0.87rem; cursor: pointer;
+  transition: background 0.2s; justify-content: center;
+  white-space: nowrap;
 }
 .btn-exportar:hover:not(:disabled) { background: #15803d; }
 .btn-exportar:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -69,9 +79,20 @@
 .btn-buscar:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* RESUMEN */
-.resumen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+/* Cinco columnas, no cuatro: al agregar la tarjeta de permisos la quinta
+   caía a una segunda fila con cuatro huecos vacíos. El auto-fit permite
+   que se reacomoden en pantallas estrechas sin dejar una sola suelta. */
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media (max-width: 1180px) {
+  .resumen-grid { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+}
 .resumen-card {
-  background: white; border-radius: 10px; padding: 16px 20px;
+  background: white; border-radius: 10px; padding: 14px 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.07);
   border-left: 4px solid #e2e8f0;
   display: flex; flex-direction: column; gap: 4px;
@@ -119,3 +140,26 @@
 }
 .spinner-dark { border-color: rgba(0,0,0,0.2); border-top-color: #374151; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* ── Botón de exportación a PDF ──────────────────────────── */
+.btn-pdf { background: #b91c1c; }
+.btn-pdf:hover:not(:disabled) { background: #991b1b; }
+
+/* ── Tarjeta de permisos ─────────────────────────────────── */
+.card-permiso { border-left-color: #3b82f6; }
+
+/* Minutos acumulados junto al conteo de tardanzas: diez llegadas de dos
+   minutos no son lo mismo que dos de media hora. */
+.resumen-label small {
+  display: block;
+  font-size: .72rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* ── Estados que faltaban ────────────────────────────────── */
+.badge-permiso { background: #dbeafe; color: #1e40af; }
+.badge-extra   { background: #ede9fe; color: #6d28d9; }
+.badge-neutro  { background: #f1f5f9; color: #64748b; }

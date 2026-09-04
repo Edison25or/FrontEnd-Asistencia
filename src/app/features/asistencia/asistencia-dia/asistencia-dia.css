@@ -239,3 +239,29 @@
 .tipo-noprog   { background: #fef3c7; color: #92400e; }
 .tipo-falta    { background: #fee2e2; color: #991b1b; }
 .tipo-permiso  { background: #f3e8ff; color: #6b21a8; }
+
+/* ── COLUMNA DE FECHA ───────────────────────────────────── */
+.fecha-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 7px;
+  padding: 3px 9px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Ámbar para las jornadas que no son de hoy: normalmente el turno noche
+   que empezó la víspera y sigue contando. */
+.fecha-anterior {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.nota-ventana {
+  font-size: 0.79rem;
+  color: #9ca3af;
+  margin: 14px 4px 0;
+  line-height: 1.5;
+}

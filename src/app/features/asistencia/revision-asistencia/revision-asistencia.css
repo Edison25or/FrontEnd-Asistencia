@@ -1,7 +1,20 @@
 /* ══ ROOT ══════════════════════════════════════════════════ */
 .rev-root    { padding: 22px 28px; display: flex; flex-direction: column; gap: 14px; max-width: 1600px; }
-.rev-header  { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.rev-titulo  { font-size: 1.35rem; font-weight: 700; color: #111827; margin: 0 0 3px; }
+/*
+   Título, quincenas y acciones en una sola fila. Antes el título ocupaba
+   una franja y las quincenas otra; juntos ahorran unos 90px verticales,
+   que es una fila y media de la tabla.
+*/
+.rev-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.rev-titulo-bloque { flex-shrink: 0; }
+.rev-titulo  { font-size: 1.2rem; font-weight: 700; color: #111827; margin: 0 0 2px; white-space: nowrap; }
+.rev-subtitulo { font-size: .78rem; color: #6b7280; margin: 0; white-space: nowrap; }
 .rev-subtitulo { font-size: .84rem; color: #6b7280; margin: 0; }
 
 .btn-np {
@@ -200,3 +213,259 @@
 .btn-guardar    { padding: 8px 18px; background: #8cc63f; color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: .86rem; cursor: pointer; }
 .btn-guardar:hover:not(:disabled)  { background: #76aa33; }
 .btn-cancelar:disabled, .btn-guardar:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ══════════════════════════════════════════════════════════ */
+/* BANDEJA DE PENDIENTES — CU20                                */
+/* ══════════════════════════════════════════════════════════ */
+
+/* ── Chips de ausencia ──────────────────────────────────── */
+/*
+   Una jornada neutralizada por permiso se veía como PROGRAMADA /
+   REVISADO, idéntica a una resuelta a mano. Estos chips dicen por qué
+   no cuenta como falta.
+*/
+.chip-ausencia {
+  display: inline-block;
+  margin-left: 6px;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.chip-permiso     { background: #dbeafe; color: #1e40af; }
+.chip-justificada { background: #e0e7ff; color: #4338ca; }
+.chip-feriado     { background: #fce7f3; color: #9d174d; }
+
+/* ── Indicador de revisión requerida ────────────────────── */
+/*
+   Ámbar y no rojo: no es un error, es una decisión pendiente. Pero es lo
+   único que bloquea el cierre de quincena (RN-37), así que tiene que
+   verse.
+*/
+.chip-revision {
+  display: inline-block;
+  margin-left: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ── Quién resolvió ─────────────────────────────────────── */
+.resuelto-por {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 3px;
+  font-style: italic;
+  /* Un correo largo desbordaría la columna. Se recorta y el tooltip
+     conserva el dato completo con la fecha. */
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
+}
+
+/* ── Minutos en feriado ─────────────────────────────────── */
+.min-feriado {
+  font-size: 0.68rem;
+  color: #9d174d;
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+/* ── Filtro de pendientes ───────────────────────────────── */
+.filtro-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.filtro-check:hover { border-color: #cbd5e1; }
+.filtro-check input { accent-color: #f59e0b; cursor: pointer; }
+.filtro-check-on {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+/* ── Aviso de re-revisión en el modal ───────────────────── */
+/*
+   Un registro ya revisado se puede volver a revisar: el límite es el
+   consolidado, no el estado (CU18, RN-33). Pero conviene decirlo, para
+   que nadie sobrescriba una decisión ajena sin darse cuenta.
+*/
+.aviso-rerevision {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 9px;
+  padding: 10px 13px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.aviso-rerevision strong { font-weight: 700; }
+
+
+/* ══════════════════════════════════════════════════════════ */
+/* SELECTOR DE QUINCENA, EN LA CABECERA                        */
+/* ══════════════════════════════════════════════════════════ */
+/*
+   Píldoras de dos líneas, con la misma altura que el bloque de título y
+   subtítulo. Igualar alturas evita la franja en blanco a los lados del
+   texto: el espacio ya estaba reservado, así que se aprovecha para
+   mostrar el rango de fechas en vez de esconderlo en un tooltip.
+*/
+.q-chips {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+/* 44px = alto del título (~20px) + subtítulo (~15px) + su separación. */
+.q-chip {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 5px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+  text-align: left;
+}
+.q-chip:hover { border-color: #cbd5e1; background: #f8fafc; }
+.q-chip-activa {
+  border-color: #8cc63f;
+  background: #f7fee7;
+  box-shadow: 0 0 0 2px rgba(140, 198, 63, .18);
+}
+.q-chip-cerrada { opacity: .7; }
+
+.q-chip-linea1 { display: flex; align-items: center; gap: 6px; }
+.q-chip-desc  { font-size: 0.79rem; font-weight: 700; color: #1e293b; }
+.q-chip-rango {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+.q-chip-activa .q-chip-rango { color: #65a30d; }
+.q-chip-lock  { font-size: 0.68rem; }
+.q-chip-pend {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+
+.rev-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Misma altura que las píldoras, para que la fila quede alineada. */
+.rev-acciones .btn-np,
+.btn-cierre-diario { min-height: 44px; }
+
+.btn-cierre-diario {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-cierre-diario:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+/* El layout deja de tener dos columnas. */
+.rev-layout { display: block !important; }
+.panel-asistencias { width: 100%; }
+
+/* ══════════════════════════════════════════════════════════ */
+/* COLUMNA DE ACCIONES SIEMPRE VISIBLE                         */
+/* ══════════════════════════════════════════════════════════ */
+/*
+   Aunque la tabla siga desbordando en pantallas estrechas, el botón de
+   editar queda anclado a la derecha. Antes había que desplazarse hasta
+   el final de la lista para encontrar la barra horizontal, y luego hasta
+   el extremo derecho para llegar al botón.
+*/
+.qa-tabla th:last-child,
+.qa-tabla td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: -6px 0 8px -6px rgba(15, 23, 42, .16);
+}
+.qa-tabla thead th:last-child { background: #f8fafc; z-index: 3; }
+.qa-tabla tbody tr:hover td:last-child { background: #fafafa; }
+
+/* La cabecera acompaña al desplazamiento vertical. */
+.qa-tabla thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* ── Celdas de rango ────────────────────────────────────── */
+.td-rango { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rango-sep { color: #cbd5e1; margin: 0 5px; font-weight: 400; }
+
+.td-prevpost { white-space: nowrap; }
+.td-prevpost .tiempo-pill + .tiempo-pill { margin-left: 4px; }
+
+
+/* ── Fila de filtros con período y contadores ───────────── */
+.qa-filtros {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.qa-periodo {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+.qa-filtros .cnt { padding: 7px 12px; font-size: 0.76rem; white-space: nowrap; }
+.qa-filtros .filtro-input,
+.qa-filtros .filtro-select { margin: 0; }
+.filtro-wide { flex: 1; min-width: 180px; }

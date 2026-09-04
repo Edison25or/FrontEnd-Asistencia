@@ -1,0 +1,215 @@
+<div class="fer-container">
+
+  <!-- ── CABECERA ─────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Feriados</h2>
+      <p class="page-subtitle">
+        Días feriados del calendario. Las horas trabajadas en ellos se computan por
+        día calendario y aparecen desglosadas en el consolidado.
+      </p>
+    </div>
+    @if (esSuperAdmin()) {
+      <button class="btn-nuevo" (click)="abrirModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo Feriado
+      </button>
+    }
+  </div>
+
+  @if (errorGlobal) {
+    <div class="alerta-error">{{ errorGlobal }}</div>
+  }
+
+  <!-- ── RESULTADO DEL REGISTRO ───────────────────────── -->
+  @if (resultado) {
+    <div class="alerta-ok">
+      <div>
+        <strong>Feriado registrado para el {{ resultado.fecha | fechaPe }}.</strong>
+        <div class="ok-detalle">
+          {{ resultado.jornadasConMinutos }} jornada(s) con horas recalculadas ·
+          {{ resultado.preRegistrosSinMarcar }} pre-registro(s) marcados como no laborables.
+        </div>
+      </div>
+      <button class="ok-cerrar" (click)="cerrarResultado()">×</button>
+    </div>
+  }
+
+  <!-- ── TABLA ────────────────────────────────────────── -->
+  <div class="tabla-card">
+    @if (isLoading) {
+      <div class="estado-vacio">Cargando…</div>
+    } @else {
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Día</th>
+            <th>Descripción</th>
+            <th>Registrado por</th>
+            @if (esSuperAdmin()) { <th>Acciones</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of feriados; track f.idFeriado) {
+            <tr [class.fila-pasada]="esPasado(f.fecha)">
+              <td class="col-fecha">{{ f.fecha | fechaPe }}</td>
+              <td class="col-dia">{{ diaSemana(f.fecha) }}</td>
+              <td class="col-nombre">{{ f.descripcion }}</td>
+              <td class="col-usuario">{{ f.registradoPor || '—' }}</td>
+              @if (esSuperAdmin()) {
+                <td class="col-acciones">
+                  <button class="btn-icon" title="Dar de baja" (click)="confirmarBaja(f)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  </button>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="esSuperAdmin() ? 5 : 4" class="estado-vacio">
+                No hay feriados registrados. Se cargan a mano conforme se publiquen:
+                el calendario cambia cada año y los feriados móviles se desplazan.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <p class="nota-pie">
+    Las horas de feriado se cuentan por día calendario, no por jornada. Una jornada
+    nocturna que empieza la víspera aporta al feriado solo los minutos posteriores a
+    la medianoche, y esos minutos se descuentan del total normal del turno para no
+    contarlos dos veces.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: NUEVO FERIADO                                   -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarModal) {
+  <div class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>Nuevo Feriado</h3>
+        <button class="modal-close" (click)="cerrarModal()">×</button>
+      </div>
+
+      <div class="campo">
+        <label>Fecha *</label>
+        <input type="date" [(ngModel)]="nuevaFecha" (ngModelChange)="onFechaChange()"
+               class="input-text">
+        @if (nuevaFecha) {
+          <span class="campo-hint">{{ diaSemana(nuevaFecha) }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label>Descripción *</label>
+        <input type="text" [(ngModel)]="nuevaDescripcion" maxlength="120"
+               class="input-text" placeholder="Ej: Día de la Independencia">
+      </div>
+
+      <!-- ── VISTA PREVIA DEL IMPACTO ── -->
+      @if (cargandoImpacto) {
+        <div class="impacto-box impacto-neutro">Calculando impacto…</div>
+      } @else if (impacto) {
+        @if (hayImpacto) {
+          <div class="impacto-box impacto-aviso">
+            <strong>Este feriado afectará registros existentes.</strong>
+            <div class="impacto-cifras">
+              <div class="cifra">
+                <span class="cifra-num">{{ impacto.jornadasConMinutos }}</span>
+                <span class="cifra-lbl">jornadas con horas dentro del feriado</span>
+              </div>
+              <div class="cifra">
+                <span class="cifra-num">{{ impacto.preRegistrosSinMarcar }}</span>
+                <span class="cifra-lbl">pre-registros que quedarán no laborables</span>
+              </div>
+            </div>
+
+            @if (impacto.detalle.length > 0) {
+              <table class="tabla-impacto">
+                <thead>
+                  <tr>
+                    <th>Trabajador</th>
+                    <th>Jornada</th>
+                    <th>Turno</th>
+                    <th>Minutos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (d of impacto.detalle; track d.idAsistencia) {
+                    <tr>
+                      <td>{{ d.trabajador }}</td>
+                      <td>{{ d.fechaJornada }}</td>
+                      <td>{{ d.turno }}</td>
+                      <td class="col-num">{{ formatMin(d.minutosEnFeriado) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <p class="impacto-nota">
+                Fíjate en las jornadas cuya fecha es el día anterior: son turnos
+                nocturnos que empezaron la víspera y aportan sus minutos posteriores
+                a la medianoche. Es lo esperado.
+              </p>
+            }
+          </div>
+        } @else {
+          <div class="impacto-box impacto-ok">
+            Sin impacto sobre registros existentes. No hay jornadas trabajadas ni
+            pre-registros programados en esa fecha.
+          </div>
+        }
+      }
+
+      @if (modalError) {
+        <div class="modal-error">{{ modalError }}</div>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModal()" [disabled]="guardando">Cancelar</button>
+        <button class="btn-guardar" (click)="registrar()" [disabled]="guardando || !nuevaFecha">
+          {{ guardando ? 'Registrando…' : 'Registrar feriado' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: DAR DE BAJA                                     -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarModalBaja && feriadoParaBaja) {
+  <div class="modal-overlay" (click)="cerrarModalBaja()">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>Dar de baja el feriado</h3>
+        <button class="modal-close" (click)="cerrarModalBaja()">×</button>
+      </div>
+
+      <p>
+        <strong>{{ feriadoParaBaja.fecha | fechaPe }}</strong> — {{ feriadoParaBaja.descripcion }}
+      </p>
+      <p class="modal-nota">
+        Se revertirá su efecto: las horas de feriado de las jornadas afectadas se
+        recalcularán y los pre-registros dejarán de estar marcados como no
+        laborables. Las quincenas ya cerradas no se tocan.
+      </p>
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModalBaja()" [disabled]="guardando">Cancelar</button>
+        <button class="btn-eliminar" (click)="darDeBaja()" [disabled]="guardando">
+          {{ guardando ? 'Procesando…' : 'Sí, dar de baja' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

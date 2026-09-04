@@ -416,13 +416,42 @@
       </div>
 
       <div class="form-group">
-        <label>Motivo del cese (Opcional):</label>
-        <input type="text" class="input-text" [(ngModel)]="motivoCese" placeholder="Ej: Fin de contrato, Renuncia voluntaria...">
+        <label>Motivo del cese *</label>
+        <!--
+          Desplegable, no texto libre. El backend resuelve el motivo por
+          coincidencia exacta contra el catálogo (RN-11); escribiéndolo a
+          mano, "renuncia" y "Renuncia voluntaria" acababan como dos textos
+          sueltos distintos y el catálogo quedaba sin usarse.
+        -->
+        <select class="input-text" [(ngModel)]="motivoCese">
+          <option value="">Selecciona un motivo...</option>
+          @for (m of motivosCese; track m.id) {
+            <option [value]="m.nombre">{{ m.nombre }}</option>
+          }
+        </select>
+        @if (motivosCese.length === 0) {
+          <small class="form-hint">
+            No hay motivos de cese registrados. Cárgalos en Tablas Maestras.
+          </small>
+        }
       </div>
+
+      @if (requiereDetalle) {
+        <div class="form-group">
+          <label>Detalle *</label>
+          <input type="text" class="input-text" [(ngModel)]="detalleMotivoCese"
+                 maxlength="255" placeholder="Explica el motivo...">
+          <small class="form-hint">
+            Se guarda aparte del motivo tipificado, para no falsear el historial.
+          </small>
+        </div>
+      }
 
       <div class="modal-actions">
         <button class="btn-info" (click)="cerrarModalCese()" [disabled]="isProcesandoModal">Cancelar</button>
-        <button class="btn-danger" (click)="procesarCese()" [disabled]="isProcesandoModal || !fechaCese">
+        <button class="btn-danger" (click)="procesarCese()"
+                [disabled]="isProcesandoModal || !fechaCese || !motivoCese
+                            || (requiereDetalle && !detalleMotivoCese.trim())">
           {{ isProcesandoModal ? 'Procesando...' : 'Confirmar Baja' }}
         </button>
       </div>
@@ -436,7 +465,21 @@
   <div class="modal-overlay">
     <div class="modal-content">
       <h3>Reingresar Trabajador</h3>
-      <p>Selecciona el área y puesto para el reingreso de <strong>{{ trabajadorParaReingreso?.nombreCompleto }}</strong>.</p>
+      <p>Reingreso de <strong>{{ trabajadorParaReingreso?.nombreCompleto }}</strong>.</p>
+
+      <!--
+        El puesto es opcional (RN-12): sin indicarlo, el backend conserva
+        el del registro anterior. Exigirlo siempre obligaba a volver a
+        elegir área y puesto aunque el trabajador volviera al mismo sitio.
+      -->
+      <div class="form-group">
+        <label class="check-inline">
+          <input type="checkbox" [(ngModel)]="conservarPuesto">
+          Conservar su puesto anterior
+        </label>
+      </div>
+
+      @if (!conservarPuesto) {
       <div class="form-group">
         <label>Área *</label>
         <select class="select-rol" [(ngModel)]="areaSeleccionadaReingreso" (ngModelChange)="onAreaReingresoCambia($event)">
@@ -455,9 +498,10 @@
           }
         </select>
       </div>
+      }
       <div class="modal-actions">
         <button class="btn-info" (click)="cerrarModalReingreso()" [disabled]="isProcesandoModal">Cancelar</button>
-        <button class="btn-success" (click)="procesarReingreso()" [disabled]="isProcesandoModal || !puestoSeleccionadoReingreso">
+        <button class="btn-success" (click)="procesarReingreso()" [disabled]="isProcesandoModal || (!conservarPuesto && !puestoSeleccionadoReingreso)">
           {{ isProcesandoModal ? 'Procesando...' : 'Confirmar Reingreso' }}
         </button>
       </div>

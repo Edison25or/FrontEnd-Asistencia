@@ -1,0 +1,296 @@
+<div class="aus-container">
+
+  <!-- ── CABECERA ─────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Permisos y Faltas Justificadas</h2>
+      <p class="page-subtitle">
+        Registro de ausencias a nombre del trabajador. Al guardarlas, las jornadas
+        del rango dejan de contar como falta injustificada.
+      </p>
+    </div>
+    @if (esJefeOSuperior()) {
+      <button class="btn-nuevo" [disabled]="tiposAusencia.length === 0" (click)="abrirModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo {{ labelSingular }}
+      </button>
+    }
+  </div>
+
+  @if (errorGlobal) {
+    <div class="alerta-aviso">{{ errorGlobal }}</div>
+  }
+
+  <!-- ── RESULTADO DEL ÚLTIMO REGISTRO ────────────────── -->
+  @if (ultimoResultado) {
+    <div class="alerta-ok">
+      <div class="ok-cuerpo">
+        @if (ultimoResultado.neutralizados < 0) {
+          <strong>{{ ultimoResultado.titulo }}.</strong>
+          <div class="ok-detalle">
+            {{ revertidos }} jornada(s) volvieron a estado pendiente. El cierre
+            diario las reevaluará y, si su ventana ya venció, pasarán a falta
+            injustificada.
+          </div>
+        } @else {
+        <strong>Registrado.</strong> {{ ultimoResultado.titulo }}.
+        @if (ultimoResultado.neutralizados > 0) {
+          <div class="ok-detalle">
+            {{ ultimoResultado.neutralizados }} jornada(s) programada(s) del rango
+            dejaron de contar como falta.
+          </div>
+        } @else {
+          <div class="ok-detalle">
+            No había jornadas programadas en ese rango, o ya estaban consolidadas.
+          </div>
+        }
+        @if (ultimoResultado.fueraDePlazo) {
+          <div class="ok-aviso">
+            Se registró fuera del plazo estándar de una a dos semanas de anticipación.
+            Queda marcado como excepción, pero es válido.
+          </div>
+        }
+        }
+      </div>
+      <button class="ok-cerrar" (click)="cerrarResultado()">×</button>
+    </div>
+  }
+
+  <!-- ── PESTAÑAS ─────────────────────────────────────── -->
+  <div class="tabs-bar">
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'permisos'" (click)="setTab('permisos')">
+      Permisos
+    </button>
+    <button class="tab-btn" [class.tab-activo]="tabActual === 'faltas'" (click)="setTab('faltas')">
+      Faltas Justificadas
+    </button>
+  </div>
+
+  <p class="tab-nota">
+    @if (tabActual === 'permisos') {
+      Ausencia planificada. Se espera registrarla con una a dos semanas de
+      anticipación; fuera de ese plazo se acepta igual, marcada como excepción.
+    } @else {
+      Ausencia no planificada con motivo válido. No tiene límite de plazo, pero
+      registrada después del cierre no modifica el consolidado ya emitido.
+    }
+  </p>
+
+  <!-- ── CONSULTA ─────────────────────────────────────── -->
+  <div class="filtros-card">
+    <div class="campo">
+      <label>Trabajador</label>
+      <select [(ngModel)]="consultaTrabajador" class="input-select">
+        <option [ngValue]="null">Selecciona…</option>
+        @for (t of trabajadores; track t.idTrabajador) {
+          <option [ngValue]="t.idTrabajador">
+            {{ t.pNombre }} {{ t.aPaterno }} {{ t.aMaterno }} — {{ t.nroDocumento }}
+          </option>
+        }
+      </select>
+    </div>
+    <div class="campo campo-fecha">
+      <label>Desde</label>
+      <input type="date" [(ngModel)]="consultaDesde" class="input-text">
+    </div>
+    <div class="campo campo-fecha">
+      <label>Hasta</label>
+      <input type="date" [(ngModel)]="consultaHasta" class="input-text">
+    </div>
+    <button class="btn-buscar" [disabled]="!consultaTrabajador || isConsultando" (click)="consultar()">
+      {{ isConsultando ? 'Buscando…' : 'Buscar' }}
+    </button>
+  </div>
+
+  <!-- ── TABLA ────────────────────────────────────────── -->
+  <div class="tabla-card">
+    @if (!consultado) {
+      <div class="estado-vacio">Selecciona un trabajador y un rango de fechas.</div>
+    } @else if (isConsultando) {
+      <div class="estado-vacio">Cargando…</div>
+    } @else {
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Desde</th>
+            <th>Hasta</th>
+            <th>Días</th>
+            <th>Motivo</th>
+            <th>Registrado por</th>
+            @if (esJefeOSuperior()) { <th style="text-align:center">Acciones</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of itemsActuales; track $index) {
+            <tr>
+              <td class="col-nombre">
+                {{ item.tipoAusencia }}
+                @if (item.fueraDePlazo) {
+                  <span class="chip-aviso" title="Registrado fuera del plazo estándar">
+                    fuera de plazo
+                  </span>
+                }
+              </td>
+              <td>{{ item.fechaInicio | fechaPe }}</td>
+              <td>{{ item.fechaFin | fechaPe }}</td>
+              <td class="col-num">{{ diasDe(item) }}</td>
+              <td class="col-motivo">{{ item.comentario }}</td>
+              <td class="col-usuario">{{ item.registradoPor || '—' }}</td>
+              @if (esJefeOSuperior()) {
+                <td style="text-align:center">
+                  <!--
+                    No hay botón de editar: cambiar el rango obligaría a
+                    revertir y volver a neutralizar en una sola operación, y
+                    un fallo intermedio dejaría pre-registros a medio camino.
+                    Eliminar y volver a crear es equivalente y no puede
+                    quedar a medias.
+                  -->
+                  <button class="btn-icon-del" title="Eliminar" (click)="confirmarEliminar(item)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  </button>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="esJefeOSuperior() ? 7 : 6" class="estado-vacio">
+                Sin registros para {{ nombreTrabajador(consultaTrabajador) }}
+                en el rango indicado.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: REGISTRAR                                       -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarModal) {
+  <div class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>Nuevo {{ labelSingular }}</h3>
+        <button class="modal-close" (click)="cerrarModal()">×</button>
+      </div>
+
+      <form [formGroup]="form">
+        <div class="campo">
+          <label>Trabajador *</label>
+          <select formControlName="idTrabajador" class="input-select">
+            <option [ngValue]="null">Selecciona…</option>
+            @for (t of trabajadores; track t.idTrabajador) {
+              <option [ngValue]="t.idTrabajador">
+                {{ t.pNombre }} {{ t.aPaterno }} {{ t.aMaterno }} — {{ t.nroDocumento }}
+              </option>
+            }
+          </select>
+          @if (form.get('idTrabajador')?.invalid && form.get('idTrabajador')?.touched) {
+            <span class="campo-error">Debes seleccionar un trabajador.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label>Tipo de ausencia *</label>
+          <select formControlName="idTipoAusencia" class="input-select">
+            <option [ngValue]="null">Selecciona…</option>
+            @for (t of tiposAusencia; track t.id) {
+              <option [ngValue]="t.id">{{ t.nombre }}</option>
+            }
+          </select>
+          @if (form.get('idTipoAusencia')?.invalid && form.get('idTipoAusencia')?.touched) {
+            <span class="campo-error">Debes seleccionar un tipo.</span>
+          }
+        </div>
+
+        <div class="campo-fila">
+          <div class="campo">
+            <label>Desde *</label>
+            <input type="date" formControlName="fechaInicio" class="input-text">
+          </div>
+          <div class="campo">
+            <label>Hasta *</label>
+            <input type="date" formControlName="fechaFin" class="input-text">
+          </div>
+        </div>
+
+        <div class="campo">
+          <label>Motivo *</label>
+          <textarea formControlName="comentario" class="input-textarea" rows="3"
+                    maxlength="500"
+                    placeholder="Por qué se otorga la ausencia…"></textarea>
+          @if (form.get('comentario')?.invalid && form.get('comentario')?.touched) {
+            <span class="campo-error">El motivo es obligatorio.</span>
+          }
+        </div>
+
+        <p class="modal-nota">
+          Al guardar, las jornadas programadas del rango que aún no estén
+          consolidadas dejarán de contar como falta injustificada.
+        </p>
+      </form>
+
+      @if (modalError) {
+        <div class="modal-error">{{ modalError }}</div>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModal()" [disabled]="guardando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardar()" [disabled]="guardando">
+          {{ guardando ? 'Guardando…' : 'Registrar' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: ELIMINAR                                        -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarModalEliminar && itemParaEliminar) {
+  <div class="modal-overlay" (click)="cerrarModalEliminar()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>Eliminar {{ labelSingular }}</h3>
+        <button class="modal-close" (click)="cerrarModalEliminar()">×</button>
+      </div>
+
+      <p>
+        <strong>{{ itemParaEliminar.tipoAusencia }}</strong> de
+        {{ itemParaEliminar.trabajadorNombre }}, del
+        {{ itemParaEliminar.fechaInicio | fechaPe }} al {{ itemParaEliminar.fechaFin | fechaPe }}.
+      </p>
+
+      <p class="modal-nota">
+        Las jornadas del rango que nadie marcó volverán a estado pendiente, y el
+        cierre diario las reevaluará: si su ventana ya venció, pasarán a falta
+        injustificada. Las jornadas que el trabajador sí marcó conservan su
+        marcación.
+      </p>
+
+      <p class="modal-nota">
+        No se puede eliminar si alguna jornada del rango ya fue consolidada o
+        pertenece a una quincena cerrada.
+      </p>
+
+      @if (errorEliminar) {
+        <div class="modal-error">{{ errorEliminar }}</div>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarModalEliminar()" [disabled]="guardando">Cancelar</button>
+        <button class="btn-eliminar" (click)="eliminar()" [disabled]="guardando">
+          {{ guardando ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

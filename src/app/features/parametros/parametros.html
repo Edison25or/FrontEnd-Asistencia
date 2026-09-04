@@ -1,0 +1,215 @@
+<div class="par-container">
+
+  <!-- ── CABECERA ─────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Parámetros del Sistema</h2>
+      <p class="page-subtitle">
+        Tolerancias de marcación y cortes de quincena. Se aplican sin necesidad de
+        volver a desplegar el sistema.
+      </p>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="estado-vacio">Cargando configuración…</div>
+  } @else {
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TOLERANCIAS DE MARCACIÓN                            -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="seccion">
+    <div class="seccion-header">
+      <h3>Tolerancias de marcación</h3>
+      <p>Límites que decide el sistema al registrar una entrada o una salida.</p>
+    </div>
+
+    <div class="campos-grid">
+
+      <div class="campo">
+        <label>
+          P1 · Máxima anticipación de entrada
+          <span class="campo-unidad">minutos</span>
+        </label>
+        <input type="number" min="0" max="720" class="input-text"
+               [(ngModel)]="generales.maxAnticipacionEntrada"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          {{ enHoras(generales.maxAnticipacionEntrada) }}. Más allá de este margen
+          la marcación se rechaza y hay que registrarla como contingencia.
+        </span>
+      </div>
+
+      <div class="campo">
+        <label>
+          P2 · Máximo exceso de salida
+          <span class="campo-unidad">minutos</span>
+        </label>
+        <input type="number" min="0" max="720" class="input-text"
+               [(ngModel)]="generales.maxExcesoSalida"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          {{ enHoras(generales.maxExcesoSalida) }}. La salida se registra siempre,
+          incluso si excede este valor; lo que cambia es que pasa a revisión
+          obligatoria.
+        </span>
+      </div>
+
+      <div class="campo">
+        <label>
+          P3 · Tope combinado
+          <span class="campo-unidad">minutos</span>
+        </label>
+        <input type="number" min="0" max="1440" class="input-text"
+               [class.input-error]="errorP3"
+               [(ngModel)]="generales.topeCombinado"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          {{ enHoras(generales.topeCombinado) }}. Acota la suma de lo que el
+          trabajador se adelantó y lo que se quedó de más. Solo puede evaluarse en
+          la salida, cuando ya se conocen ambos extremos.
+        </span>
+      </div>
+    </div>
+
+    @if (errorP3) {
+      <div class="alerta-error">{{ errorP3 }}</div>
+    }
+
+    <div class="seccion-header seccion-sub">
+      <h4>Tiempos del lector</h4>
+    </div>
+
+    <div class="campos-grid">
+      <div class="campo">
+        <label>
+          Ventana de confirmación
+          <span class="campo-unidad">segundos</span>
+        </label>
+        <input type="number" min="5" max="120" class="input-text"
+               [class.input-error]="errorTiemposLector"
+               [(ngModel)]="generales.ventanaConfirmacionSeg"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          Tiempo que el lector espera el segundo escaneo cuando alguien llega
+          antes de su hora.
+        </span>
+      </div>
+
+      <div class="campo">
+        <label>
+          Intervalo anti-rebote
+          <span class="campo-unidad">segundos</span>
+        </label>
+        <input type="number" min="0" max="119" class="input-text"
+               [class.input-error]="errorTiemposLector"
+               [(ngModel)]="generales.intervaloAntirreboteSeg"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          Escaneos repetidos dentro de este intervalo se descartan. Evita que un
+          doble paso accidental cierre la jornada con horas casi nulas.
+        </span>
+      </div>
+
+      <div class="campo campo-check">
+        <label class="check-label">
+          <input type="checkbox"
+                 [(ngModel)]="generales.descontarRefrigerioFeriado"
+                 [disabled]="!esSuperAdmin()">
+          Descontar refrigerio del cómputo de feriado
+        </label>
+        <span class="campo-hint">
+          Si está activo, los minutos de refrigerio que caen dentro de un feriado
+          se descuentan en proporción. Decisión pendiente de confirmar con
+          Contabilidad.
+        </span>
+      </div>
+    </div>
+
+    @if (errorTiemposLector) {
+      <div class="alerta-error">{{ errorTiemposLector }}</div>
+    }
+
+    @if (errorGen) { <div class="alerta-error">{{ errorGen }}</div> }
+    @if (okGen)    { <div class="alerta-ok">{{ okGen }}</div> }
+
+    @if (esSuperAdmin()) {
+      <div class="seccion-footer">
+        <button class="btn-guardar"
+                [disabled]="guardandoGen || !generalesValidos"
+                (click)="guardarGenerales()">
+          {{ guardandoGen ? 'Guardando…' : 'Guardar tolerancias' }}
+        </button>
+      </div>
+    } @else {
+      <p class="solo-lectura">Solo el Superadministrador puede modificar estos valores.</p>
+    }
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- CORTES DE QUINCENA                                  -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="seccion">
+    <div class="seccion-header">
+      <h3>Cortes de quincena</h3>
+      <p>
+        Determinan a qué periodo pertenece cada jornada. La atribución se ancla a
+        la hora de entrada programada, no a la fecha del calendario.
+      </p>
+    </div>
+
+    <div class="campos-grid">
+      <div class="campo">
+        <label>
+          Día de corte intermedio
+          <span class="campo-unidad">1 a 28</span>
+        </label>
+        <input type="number" min="1" max="28" class="input-text"
+               [(ngModel)]="quincena.diaCorteIntermedio"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          El otro corte es siempre el último día del mes. El máximo es 28 para que
+          el día exista en todos los meses.
+        </span>
+      </div>
+
+      <div class="campo">
+        <label>Hora de corte</label>
+        <input type="time" class="input-text"
+               [(ngModel)]="quincena.horaCorte"
+               [disabled]="!esSuperAdmin()">
+        <span class="campo-hint">
+          Se aplica a ambos límites. Una jornada que entra exactamente a esta hora
+          pertenece a la quincena siguiente.
+        </span>
+      </div>
+    </div>
+
+    <div class="ejemplo-box">
+      <strong>Primera quincena con esta configuración:</strong>
+      {{ ejemploQuincena }}
+      <div class="ejemplo-nota">
+        Por eso un turno noche que entra el último día del mes a las 22:00 ya
+        pertenece a la primera quincena del mes siguiente, aunque su fecha sea del
+        mes anterior.
+      </div>
+    </div>
+
+    @if (errorQui) { <div class="alerta-error">{{ errorQui }}</div> }
+    @if (okQui)    { <div class="alerta-ok">{{ okQui }}</div> }
+
+    @if (esSuperAdmin()) {
+      <div class="seccion-footer">
+        <span class="footer-aviso">
+          Los cambios aplican a las quincenas que se generen a partir de ahora.
+          Las ya creadas conservan sus límites.
+        </span>
+        <button class="btn-guardar" [disabled]="guardandoQui" (click)="guardarQuincena()">
+          {{ guardandoQui ? 'Guardando…' : 'Guardar cortes' }}
+        </button>
+      </div>
+    }
+  </div>
+
+  }
+</div>

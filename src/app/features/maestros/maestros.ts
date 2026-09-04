@@ -1,10 +1,37 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { MaestrosService, GeneroItem, AreaItem, PuestoItem } from '../../core/services/maestros.service';
+import { TurnoService, Turno } from '../../core/services/turno.service';
+import { CatalogoService, CatalogoSimple } from '../../core/services/catalogo.service';
 
-type Tab = 'generos' | 'areas' | 'puestos';
+/**
+ * Tablas maestras (CU24).
+ *
+ * ============================================================
+ * QUE SE AGREGA
+ * ============================================================
+ * Tres catálogos que antes no tenían pantalla:
+ *
+ *   Turnos (RN-18)             — reemplaza la clasificación por umbral
+ *                                horario fijo del prototipo.
+ *   Tipos de Ausencia (RN-16)  — común a permisos y faltas justificadas.
+ *   Motivos de Cese (RN-11)    — reemplaza el texto libre del cese.
+ *
+ * ============================================================
+ * POR QUE ESTOS TRES NO SE EDITAN NI SE REACTIVAN
+ * ============================================================
+ * Género, Área y Puesto tienen edición y un toggle que alterna activo e
+ * inactivo. Los tres nuevos NO: el backend solo expone alta y baja.
+ *
+ * La razón es que sus valores quedan referenciados en registros
+ * históricos. Renombrar un turno cambiaría la interpretación de jornadas
+ * ya consolidadas, y renombrar un motivo de cese reescribiría el
+ * historial laboral de alguien. Para corregir uno se crea el nuevo y se
+ * desactiva el anterior, que es lo que hace el catálogo.
+ */
+type Tab = 'generos' | 'areas' | 'puestos' | 'turnos' | 'tipos-ausencia' | 'motivos-cese';
 type ModalMode = 'crear' | 'editar';
 
 @Component({
@@ -15,19 +42,37 @@ type ModalMode = 'crear' | 'editar';
   styleUrl:    './maestros.css'
 })
 export class MaestrosComponent implements OnInit {
-  private svc = inject(MaestrosService);
-  private fb  = inject(FormBuilder);
-  private cdr = inject(ChangeDetectorRef);
+  private svc       = inject(MaestrosService);
+  private turnoSvc  = inject(TurnoService);
+  private catSvc    = inject(CatalogoService);
+  private fb        = inject(FormBuilder);
+  private cdr       = inject(ChangeDetectorRef);
 
   // ── Tabs ──────────────────────────────────────────────────
   tabActual: Tab = 'generos';
   setTab(tab: Tab) { this.tabActual = tab; this.cerrarModal(); }
+
+  /** Catálogos que solo admiten alta y baja, no edición. */
+  private readonly SOLO_ALTA_Y_BAJA: Tab[] = ['turnos', 'tipos-ausencia', 'motivos-cese'];
+
+  get permiteEditar(): boolean {
+    return !this.SOLO_ALTA_Y_BAJA.includes(this.tabActual);
+  }
+
+  /** true si el catálogo puede reactivar un elemento dado de baja. */
+  get permiteReactivar(): boolean {
+    return !this.SOLO_ALTA_Y_BAJA.includes(this.tabActual);
+  }
 
   // ── Datos ─────────────────────────────────────────────────
   generos:  GeneroItem[]  = [];
   areas:    AreaItem[]    = [];
   puestos:  PuestoItem[]  = [];
   areasActivas: AreaItem[] = [];
+
+  turnos:         Turno[]          = [];
+  tiposAusencia:  CatalogoSimple[] = [];
+  motivosCese:    CatalogoSimple[] = [];
 
   isLoading   = false;
   errorGlobal = '';
@@ -54,6 +99,22 @@ export class MaestrosComponent implements OnInit {
     idArea:            ['', Validators.required]
   });
 
+  /** Las horas son informativas: describen el turno, no clasifican (RN-25). */
+  turnoForm: FormGroup = this.fb.group({
+    nombre:     ['', [Validators.required, Validators.maxLength(40)]],
+    horaInicio: [''],
+    horaFin:    ['']
+  });
+
+  tipoAusenciaForm: FormGroup = this.fb.group({
+    nombre:      ['', [Validators.required, Validators.maxLength(80)]],
+    descripcion: ['', Validators.maxLength(200)]
+  });
+
+  motivoCeseForm: FormGroup = this.fb.group({
+    nombre: ['', [Validators.required, Validators.maxLength(80)]]
+  });
+
   // ── Toggle confirmación ───────────────────────────────────
   itemToggle: any  = null;
   mostrarConfirmToggle = false;
@@ -69,16 +130,22 @@ export class MaestrosComponent implements OnInit {
       generos:      this.svc.getGeneros(),
       areas:        this.svc.getAreas(),
       puestos:      this.svc.getPuestos(),
-      areasActivas: this.svc.getAreasActivas()
+      areasActivas: this.svc.getAreasActivas(),
+      turnos:       this.turnoSvc.getAll(),
+      tiposAus:     this.catSvc.getTiposAusencia(),
+      motivos:      this.catSvc.getMotivosCese()
     }).subscribe({
       next: (res) => {
-        // Ordenamos cada array por su respectivo ID de menor a mayor
         this.generos      = res.generos.sort((a, b) => a.idGenero - b.idGenero);
         this.areas        = res.areas.sort((a, b) => a.idArea - b.idArea);
         this.puestos      = res.puestos.sort((a, b) => a.idPuesto - b.idPuesto);
         this.areasActivas = res.areasActivas.sort((a, b) => a.idArea - b.idArea);
 
-        this.isLoading    = false;
+        this.turnos        = res.turnos.sort((a, b) => a.idTurno - b.idTurno);
+        this.tiposAusencia = res.tiposAus.sort((a, b) => a.id - b.id);
+        this.motivosCese   = res.motivos.sort((a, b) => a.id - b.id);
+
+        this.isLoading = false;
         this.cdr.detectChanges();
       },
       error: () => {
@@ -102,10 +169,12 @@ export class MaestrosComponent implements OnInit {
   }
 
   abrirEditar(item: any) {
+    // Los catálogos de solo alta y baja no se editan: renombrarlos
+    // alteraría la interpretación de registros históricos.
+    if (!this.permiteEditar) return;
+
     this.modalMode    = 'editar';
-    this.editandoId   = this.tabActual === 'generos' ? item.idGenero
-                        : this.tabActual === 'areas'   ? item.idArea
-                        :                                item.idPuesto;
+    this.editandoId   = this.idDe(item);
     this.modalError   = '';
     this.guardando    = false;
     this.mostrarModal = true;
@@ -136,15 +205,27 @@ export class MaestrosComponent implements OnInit {
     const crear = this.modalMode === 'crear';
 
     let op$: Observable<any>;
-    if (this.tabActual === 'generos') {
-      op$ = crear ? this.svc.crearGenero(this.generoForm.value)
-                  : this.svc.editarGenero(this.editandoId!, this.generoForm.value);
-    } else if (this.tabActual === 'areas') {
-      op$ = crear ? this.svc.crearArea(this.areaForm.value)
-                  : this.svc.editarArea(this.editandoId!, this.areaForm.value);
-    } else {
-      op$ = crear ? this.svc.crearPuesto(this.puestoForm.value)
-                  : this.svc.editarPuesto(this.editandoId!, this.puestoForm.value);
+    switch (this.tabActual) {
+      case 'generos':
+        op$ = crear ? this.svc.crearGenero(this.generoForm.value)
+                    : this.svc.editarGenero(this.editandoId!, this.generoForm.value);
+        break;
+      case 'areas':
+        op$ = crear ? this.svc.crearArea(this.areaForm.value)
+                    : this.svc.editarArea(this.editandoId!, this.areaForm.value);
+        break;
+      case 'puestos':
+        op$ = crear ? this.svc.crearPuesto(this.puestoForm.value)
+                    : this.svc.editarPuesto(this.editandoId!, this.puestoForm.value);
+        break;
+      case 'turnos':
+        op$ = this.turnoSvc.crear(this.turnoForm.value);
+        break;
+      case 'tipos-ausencia':
+        op$ = this.catSvc.crearTipoAusencia(this.tipoAusenciaForm.value);
+        break;
+      default:
+        op$ = this.catSvc.crearMotivoCese(this.motivoCeseForm.value);
     }
 
     op$.subscribe({
@@ -161,9 +242,13 @@ export class MaestrosComponent implements OnInit {
     });
   }
 
-  // ── Toggle activo/inactivo ────────────────────────────────
+  // ── Baja / reactivación ───────────────────────────────────
   confirmarToggle(item: any) {
-    this.itemToggle          = item;
+    // Un catálogo de solo alta y baja no reactiva: si ya está inactivo,
+    // no hay nada que confirmar.
+    if (!this.permiteReactivar && !item.activo) return;
+
+    this.itemToggle           = item;
     this.mostrarConfirmToggle = true;
     this.cdr.detectChanges();
   }
@@ -176,34 +261,118 @@ export class MaestrosComponent implements OnInit {
 
   procesarToggle() {
     if (!this.itemToggle) return;
-    // Usar el campo correcto según el tab activo para evitar
-    // que idArea de un puesto sea tomado antes que idPuesto
-    const id = this.tabActual === 'generos' ? this.itemToggle.idGenero
-             : this.tabActual === 'areas'   ? this.itemToggle.idArea
-             :                                this.itemToggle.idPuesto;
+    const id = this.idDe(this.itemToggle);
+
     let op$: Observable<any>;
-    if (this.tabActual === 'generos') op$ = this.svc.toggleGenero(id);
-    else if (this.tabActual === 'areas') op$ = this.svc.toggleArea(id);
-    else op$ = this.svc.togglePuesto(id);
+    switch (this.tabActual) {
+      case 'generos':        op$ = this.svc.toggleGenero(id);            break;
+      case 'areas':          op$ = this.svc.toggleArea(id);              break;
+      case 'puestos':        op$ = this.svc.togglePuesto(id);            break;
+      case 'turnos':         op$ = this.turnoSvc.desactivar(id);         break;
+      case 'tipos-ausencia': op$ = this.catSvc.desactivarTipoAusencia(id); break;
+      default:               op$ = this.catSvc.desactivarMotivoCese(id);
+    }
 
     op$.subscribe({
-      next: () => { this.cancelarToggle(); this.cargar(); },
-      error: (err: any) => { this.errorGlobal = err.error?.message || 'Error.'; this.cancelarToggle(); this.cdr.detectChanges(); }
+      next:  () => { this.cancelarToggle(); this.cargar(); },
+      error: (err: any) => {
+        // El backend rechaza desactivar un turno en uso por algún esquema
+        // vigente, y explica cuántos son.
+        this.errorGlobal = err.error?.message || 'Error.';
+        this.cancelarToggle();
+        this.cdr.detectChanges();
+      }
     });
   }
 
   // ── Helpers ───────────────────────────────────────────────
+
+  /** Identificador del elemento según la pestaña activa. */
+  private idDe(item: any): number {
+    switch (this.tabActual) {
+      case 'generos':        return item.idGenero;
+      case 'areas':          return item.idArea;
+      case 'puestos':        return item.idPuesto;
+      case 'turnos':         return item.idTurno;
+      default:               return item.id;   // tipos-ausencia, motivos-cese
+    }
+  }
+
   get formActual(): FormGroup {
-    if (this.tabActual === 'generos') return this.generoForm;
-    if (this.tabActual === 'areas')   return this.areaForm;
-    return this.puestoForm;
+    switch (this.tabActual) {
+      case 'generos':        return this.generoForm;
+      case 'areas':          return this.areaForm;
+      case 'puestos':        return this.puestoForm;
+      case 'turnos':         return this.turnoForm;
+      case 'tipos-ausencia': return this.tipoAusenciaForm;
+      default:               return this.motivoCeseForm;
+    }
   }
 
   get labelSingular(): string {
-    return { generos: 'Género', areas: 'Área', puestos: 'Puesto' }[this.tabActual];
+    return {
+      'generos':        'Género',
+      'areas':          'Área',
+      'puestos':        'Puesto',
+      'turnos':         'Turno',
+      'tipos-ausencia': 'Tipo de Ausencia',
+      'motivos-cese':   'Motivo de Cese'
+    }[this.tabActual];
   }
 
   get itemsActuales(): any[] {
-    return { generos: this.generos, areas: this.areas, puestos: this.puestos }[this.tabActual];
+    return {
+      'generos':        this.generos,
+      'areas':          this.areas,
+      'puestos':        this.puestos,
+      'turnos':         this.turnos,
+      'tipos-ausencia': this.tiposAusencia,
+      'motivos-cese':   this.motivosCese
+    }[this.tabActual] as any[];
+  }
+
+  /** Nombre visible del elemento, sea cual sea la pestaña. */
+  nombreDe(item: any): string {
+    return item.genero ?? item.area ?? item.puesto ?? item.nombre ?? '—';
+  }
+
+  /** Segunda columna, distinta en cada catálogo. */
+  detalleDe(item: any): string {
+    switch (this.tabActual) {
+      case 'puestos':
+        return item.areaNombre ?? '—';
+      case 'turnos':
+        return this.rangoTurno(item);
+      case 'tipos-ausencia':
+        return item.descripcion ?? '—';
+      default:
+        return '—';
+    }
+  }
+
+  /** Rango horario informativo del turno. */
+  private rangoTurno(t: Turno): string {
+    if (!t.horaInicio || !t.horaFin) return '—';
+    const ini = t.horaInicio.substring(0, 5);
+    const fin = t.horaFin.substring(0, 5);
+    return t.cruzaMedianoche
+      ? `${ini} → ${fin} (día siguiente)`
+      : `${ini} → ${fin}`;
+  }
+
+  /** Encabezado de la segunda columna. */
+  get labelDetalle(): string {
+    return {
+      'generos':        '',
+      'areas':          '',
+      'puestos':        'Área',
+      'turnos':         'Horario',
+      'tipos-ausencia': 'Descripción',
+      'motivos-cese':   ''
+    }[this.tabActual];
+  }
+
+  get tieneColumnaDetalle(): boolean {
+    return this.labelDetalle !== '';
   }
 }

@@ -313,3 +313,101 @@
   font-weight: 700;
   white-space: nowrap;
 }
+
+
+/* ══════════════════════════════════════════════════════════ */
+/* CONFIRMACIÓN POR DOBLE ESCANEO (HU-22)                     */
+/* ══════════════════════════════════════════════════════════ */
+/*
+   Ámbar y no verde: nada se ha guardado todavía. El verde está
+   reservado para el registro efectivo, y usarlo aquí haría creer al
+   trabajador que ya marcó.
+*/
+.estado-confirmacion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 28px 24px;
+  border-radius: 20px;
+  background: rgba(245, 158, 11, 0.10);
+  border: 2px solid #f59e0b;
+  animation: conf-aparecer 0.25s ease-out;
+}
+
+@keyframes conf-aparecer {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.conf-icono { color: #f59e0b; line-height: 0; }
+
+.conf-nombre {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.conf-pregunta {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin: 4px 0 0;
+  line-height: 1.2;
+}
+
+.conf-detalle {
+  font-size: 0.98rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.conf-instruccion {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  background: #f59e0b;
+  padding: 12px 28px;
+  border-radius: 12px;
+  margin-top: 6px;
+}
+
+/* Contador grande: se ve desde lejos, que es como se usa un kiosco. */
+.conf-contador {
+  font-size: 4rem;
+  font-weight: 800;
+  color: #fbbf24;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0;
+}
+.conf-urgente {
+  color: #ef4444;
+  animation: conf-latido 1s ease-in-out infinite;
+}
+@keyframes conf-latido {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+.conf-aviso {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+.conf-cancelar {
+  margin-top: 8px;
+  padding: 9px 22px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.conf-cancelar:hover { background: rgba(148, 163, 184, 0.12); color: #e2e8f0; }

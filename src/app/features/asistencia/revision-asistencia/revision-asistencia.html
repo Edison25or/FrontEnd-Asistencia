@@ -1,62 +1,71 @@
 <div class="rev-root">
 
-  <!-- ══ CABECERA ══════════════════════════════════════════ -->
+  <!-- ══ CABECERA CON SELECTOR DE QUINCENA ═════════════════ -->
+  <!--
+    El título y las quincenas comparten fila. El subtítulo se retira: en
+    una pantalla que ya lleva una tabla de once columnas, dos líneas de
+    texto explicativo cuestan más espacio del que aportan.
+  -->
   <div class="rev-header">
-    <div>
+    <div class="rev-titulo-bloque">
       <h2 class="rev-titulo">Revisión de Asistencias</h2>
-      <p class="rev-subtitulo">Gestiona las quincenas y valida los tiempos fuera de programación</p>
+      <p class="rev-subtitulo">Valida los tiempos fuera de programación y cierra la quincena</p>
     </div>
-    @if (quincenaActual) {
-      <button class="btn-np" (click)="abrirModalNP()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Asistencia no programada
+
+    <div class="q-chips">
+      @if (isLoadingQ) { <span class="pq-empty">Cargando...</span> }
+
+      @for (q of quincenas; track q.idQuincena) {
+        <button class="q-chip"
+                [class.q-chip-activa]="quincenaActual?.idQuincena === q.idQuincena"
+                [class.q-chip-cerrada]="q.estado === 'CERRADA'"
+                (click)="seleccionarQuincena(q)"
+                [title]="q.descripcion + ' · ' + (q.inicio | fechaPe) + ' a ' + (q.fin | fechaPe) + ' · ' + q.estado">
+          <!--
+            Dos líneas, para igualar el alto del bloque de título y usar
+            ese espacio en vez de dejarlo en blanco. La segunda recupera
+            el rango de fechas, que antes solo estaba en el tooltip.
+          -->
+          <span class="q-chip-linea1">
+            <span class="q-chip-desc">{{ q.descripcion }}</span>
+            @if (q.estado === 'CERRADA') {
+              <span class="q-chip-lock" title="Quincena cerrada">🔒</span>
+            }
+            @if (q.pendientesRevision > 0) {
+              <span class="q-chip-pend">{{ q.pendientesRevision }}</span>
+            }
+          </span>
+          <span class="q-chip-rango">
+            {{ q.inicio | fechaPe }} → {{ q.fin | fechaPe }}
+          </span>
+        </button>
+      } @empty {
+        @if (!isLoadingQ) {
+          <span class="pq-empty">Sin quincenas. Se crean al confirmar la programación semanal.</span>
+        }
+      }
+    </div>
+
+    <div class="rev-acciones">
+      <button class="btn-cierre-diario" (click)="mostrarModalQ = true"
+              title="Ejecutar el cierre diario de jornadas">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.22-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+        Cierre diario
       </button>
-    }
+      @if (quincenaActual) {
+        <button class="btn-np" (click)="abrirModalNP()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          No programada
+        </button>
+      }
+    </div>
   </div>
 
   @if (errorGlobal) {
     <div class="alerta-error">⚠ {{ errorGlobal }}</div>
   }
 
-  <!-- ══ LAYOUT DOS COLUMNAS ═══════════════════════════════ -->
   <div class="rev-layout">
-
-    <!-- ── PANEL IZQUIERDO: lista de quincenas ─────────────── -->
-    <aside class="panel-quincenas">
-      <div class="pq-header">
-        <span class="pq-titulo">Quincenas</span>
-        <button class="btn-nueva-q" (click)="mostrarModalQ = true" title="Nueva quincena">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-      </div>
-
-      @if (isLoadingQ) { <p class="pq-empty">Cargando...</p> }
-
-      <div class="pq-lista">
-        @for (q of quincenas; track q.idQuincena) {
-          <div class="pq-item"
-               [class.pq-activa]="quincenaActual?.idQuincena === q.idQuincena"
-               [class.pq-cerrada]="q.estado === 'CERRADA'"
-               (click)="seleccionarQuincena(q)">
-            <div class="pq-desc">{{ q.descripcion }}</div>
-            <div class="pq-rango">{{ q.fechaInicio }} → {{ q.fechaFin }}</div>
-            <div class="pq-footer">
-              <span class="pq-estado" [class.pq-estado-cerrada]="q.estado === 'CERRADA'"
-                    [class.pq-estado-abierta]="q.estado === 'ABIERTA'">
-                {{ q.estado }}
-              </span>
-              @if (q.pendientesRevision > 0) {
-                <span class="pq-pendientes">{{ q.pendientesRevision }} pendientes</span>
-              }
-            </div>
-          </div>
-        } @empty {
-          @if (!isLoadingQ) {
-            <p class="pq-empty">No hay quincenas. Crea la primera.</p>
-          }
-        }
-      </div>
-    </aside>
 
     <!-- ── PANEL DERECHO: tabla de asistencias ─────────────── -->
     <div class="panel-asistencias">
@@ -68,22 +77,18 @@
         </div>
       } @else {
 
-        <!-- Cabecera de la quincena seleccionada -->
-        <div class="qa-header">
-          <div class="qa-info">
-            <h3 class="qa-titulo">{{ quincenaActual.descripcion }}</h3>
-            <span class="qa-rango-real">
-              Período real: {{ quincenaActual.inicioReal | slice:0:16 }} → {{ quincenaActual.finReal | slice:0:16 }}
-            </span>
-          </div>
-          <div class="qa-contadores">
-            <span class="cnt cnt-verde">✓ {{ totalRevisados }} revisados</span>
-            <span class="cnt cnt-naranja">⏳ {{ totalPendientes }} pendientes</span>
-          </div>
-        </div>
-
-        <!-- Filtros -->
+        <!--
+          La cabecera de la quincena se funde con la fila de filtros: su
+          título ya está en la píldora activa y el período pasa al tooltip
+          de la píldora. Repetirlo costaba otra franja de 60px.
+        -->
         <div class="qa-filtros">
+          <span class="qa-periodo"
+                [title]="'Período real: ' + (quincenaActual.inicio | slice:0:16) + ' a ' + (quincenaActual.fin | slice:0:16)">
+            {{ quincenaActual.inicio | fechaPe }} → {{ quincenaActual.fin | fechaPe }}
+          </span>
+          <span class="cnt cnt-verde">{{ totalRevisados }} revisados</span>
+          <span class="cnt cnt-naranja">{{ totalPendientes }} pendientes</span>
           <input type="text" [(ngModel)]="filtroNombre" placeholder="Buscar trabajador..."
                  class="filtro-input filtro-wide">
           <select [(ngModel)]="filtroEstado" class="filtro-select">
@@ -98,7 +103,17 @@
               @if (t) { <option [value]="t">{{ t }}</option> }
             }
           </select>
-          <button class="btn-limpiar" (click)="filtroNombre='';filtroEstado='';filtroTipo=''">✕</button>
+          <!--
+            Filtro que la especificación pide y faltaba. requiereRevision es
+            justo lo que bloquea el cierre de quincena (RN-37), así que es el
+            que de verdad importa de los tres.
+          -->
+          <label class="filtro-check" [class.filtro-check-on]="soloPendientesRevision">
+            <input type="checkbox" [(ngModel)]="soloPendientesRevision">
+            Solo pendientes de revisión
+          </label>
+          <button class="btn-limpiar"
+                  (click)="filtroNombre='';filtroEstado='';filtroTipo='';soloPendientesRevision=false">✕</button>
         </div>
 
         <!-- Tabla de asistencias -->
@@ -113,15 +128,17 @@
                   <th>Fecha</th>
                   <th>Tipo</th>
                   <th>Estado</th>
-                  <th class="th-center">Ing. Prog</th>
-                  <th class="th-center">Sal. Prog</th>
-                  <th class="th-center">Ing. Real</th>
-                  <th class="th-center">Sal. Real</th>
-                  <th class="th-center" title="Tiempo antes del ingreso programado">Prev</th>
-                  <th class="th-center" title="Tiempo después de la salida programada">Post</th>
+              <!--
+                Programado y real se leen como rango. Cuatro columnas para
+                cuatro horas obligaban a desplazarse; agrupadas ocupan la
+                mitad y se entienden mejor de un vistazo.
+              -->
+              <th class="th-center">Programado</th>
+              <th class="th-center">Real</th>
+              <th class="th-center">Prev / Post</th>
                   <th class="th-center">Tardanza</th>
                   <th class="th-center">H. Totales</th>
-                  <th class="th-center">🌙</th>
+                  <th class="th-center">Turno</th>
                   <th></th>
                 </tr>
               </thead>
@@ -137,42 +154,95 @@
                     </td>
 
                     <td class="td-fecha">
-                      <div>{{ a.fecha }}</div>
+                      <div>{{ a.fecha | fechaPe }}</div>
                     </td>
 
                     <td>
                       <span class="tipo-badge" [ngClass]="tipoBadge(a.tipo)">{{ a.tipo }}</span>
+
+                      <!--
+                        Chip de ausencia. Sin esto, una jornada neutralizada
+                        por un permiso se veía como PROGRAMADA / REVISADO,
+                        idéntica a una resuelta a mano, y no había forma de
+                        saber por qué no contaba como falta (RN-44).
+                      -->
+                      <!--
+                        El chip dice solo la categoría; el tipo concreto va
+                        en el tooltip. "Permiso · Permiso personal" repetía
+                        la palabra y alargaba la columna sin aportar.
+                      -->
+                      @if (a.permisoAsociado) {
+                        <span class="chip-ausencia chip-permiso"
+                              [title]="'Permiso: ' + a.permisoAsociado">
+                          Permiso
+                        </span>
+                      }
+                      @if (a.faltaJustificadaAsociada) {
+                        <span class="chip-ausencia chip-justificada"
+                              [title]="'Falta justificada: ' + a.faltaJustificadaAsociada">
+                          Justificada
+                        </span>
+                      }
+                      @if (a.esDiaNoLaborable) {
+                        <span class="chip-ausencia chip-feriado" title="Día feriado">
+                          Feriado
+                        </span>
+                      }
                     </td>
 
                     <td>
                       <span class="estado-badge" [ngClass]="estadoBadge(a.estado)">{{ a.estado }}</span>
+                      @if (a.requiereRevision) {
+                        <span class="chip-revision" title="Bloquea el cierre de la quincena">
+                          requiere revisión
+                        </span>
+                      }
+                      <!--
+                        Quién lo resolvió. Una falta que cerró el proceso
+                        automático y una jornada que revisó una persona se
+                        veían idénticas; el DTO ya traía revisadoPor, solo
+                        faltaba mostrarlo.
+                      -->
+                      @if (a.estado === 'REVISADO') {
+                        <!-- Solo el usuario: la fecha alargaba la fila. Va en el tooltip. -->
+                        <div class="resuelto-por" [title]="detalleRevision(a)">
+                          {{ resueltoPor(a) }}
+                        </div>
+                      }
                     </td>
 
-                    <td class="td-center td-hora">{{ a.ingresoProg ?? '—' }}</td>
-                    <td class="td-center td-hora">{{ a.salidaProg  ?? '—' }}</td>
-                    <td class="td-center td-hora td-real">{{ a.ingresoReal ?? '—' }}</td>
-                    <td class="td-center td-hora td-real">{{ a.salidaReal  ?? '—' }}</td>
+                    <td class="td-center td-hora td-rango">
+                      {{ a.ingresoProg ?? '—' }}<span class="rango-sep">→</span>{{ a.salidaProg ?? '—' }}
+                    </td>
+                    <td class="td-center td-hora td-real td-rango">
+                      @if (a.ingresoReal || a.salidaReal) {
+                        {{ a.ingresoReal ?? '—' }}<span class="rango-sep">→</span>{{ a.salidaReal ?? '—' }}
+                      } @else { <span class="td-null">—</span> }
+                    </td>
 
-                    <!-- Tiempo previo con indicador de color -->
-                    <td class="td-center">
+                    <!--
+                      Prev y Post en una sola celda: son dos números
+                      cortos que casi nunca aparecen juntos, y separarlos
+                      costaba una columna entera.
+                    -->
+                    <td class="td-center td-prevpost">
                       @if (a.minPrevIngProg > 0) {
                         <span class="tiempo-pill" [ngClass]="colorPill(a.colorPrev)"
-                              [title]="'Validado: ' + formatMin(a.valMinPrevIng)">
+                              [title]="'Antes de la entrada. Validado: ' + formatMin(a.valMinPrevIng)">
                           {{ formatMin(a.minPrevIngProg) }}
                           @if (a.valMinPrevIng > 0) { <span class="val-tick">✓</span> }
                         </span>
-                      } @else { <span class="td-null">—</span> }
-                    </td>
-
-                    <!-- Tiempo posterior con indicador de color -->
-                    <td class="td-center">
+                      }
                       @if (a.minPostSalProg > 0) {
                         <span class="tiempo-pill" [ngClass]="colorPill(a.colorPost)"
-                              [title]="'Validado: ' + formatMin(a.valMinPostSal)">
+                              [title]="'Después de la salida. Validado: ' + formatMin(a.valMinPostSal)">
                           {{ formatMin(a.minPostSalProg) }}
                           @if (a.valMinPostSal > 0) { <span class="val-tick">✓</span> }
                         </span>
-                      } @else { <span class="td-null">—</span> }
+                      }
+                      @if (!a.minPrevIngProg && !a.minPostSalProg) {
+                        <span class="td-null">—</span>
+                      }
                     </td>
 
                     <td class="td-center">
@@ -186,7 +256,20 @@
                     </td>
 
                     <td class="td-center">
-                      @if (a.esNocturno) { <span title="Turno nocturno">🌙</span> }
+                      <!--
+                        El indicador de turno ya no se deduce de un umbral
+                        horario fijo, sino del turno del esquema programado
+                        (RN-18, RN-25). Se muestra el nombre del turno.
+                      -->
+                      <span [title]="a.turnoNombre || 'Sin turno asignado'">
+                        {{ a.turnoNombre || '—' }}
+                      </span>
+                      @if (a.minutosFeriado > 0) {
+                        <div class="min-feriado"
+                             title="Minutos de esta jornada dentro de un día feriado">
+                          {{ formatMin(a.minutosFeriado) }} feriado
+                        </div>
+                      }
                     </td>
 
                     <td class="td-accion">
@@ -200,7 +283,7 @@
 
                   </tr>
                 } @empty {
-                  <tr><td colspan="14" class="tabla-vacio">
+                  <tr><td colspan="11" class="tabla-vacio">
                     No hay asistencias para esta quincena con los filtros seleccionados.
                   </td></tr>
                 }
@@ -219,42 +302,61 @@
   <div class="modal-overlay" (click)="mostrarModalQ=false">
     <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Nueva Quincena</h3>
-        <button class="modal-close" (click)="mostrarModalQ=false">✕</button>
+        <h3>Ejecutar cierre diario</h3>
+        <button class="modal-close" (click)="mostrarModalQ=false">X</button>
       </div>
       <div class="modal-body">
         @if (errorQ) { <div class="alerta-error">{{ errorQ }}</div> }
-        <div class="form-row-3">
-          <div class="form-group">
-            <label>Año</label>
-            <input type="number" [(ngModel)]="nuevoAnio" class="input-field" min="2020" max="2099">
-          </div>
-          <div class="form-group">
-            <label>Mes</label>
-            <select [(ngModel)]="nuevoMes" class="input-field">
-              @for (m of MESES; track $index) {
-                @if ($index > 0) { <option [value]="$index">{{ m }}</option> }
-              }
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Quincena</label>
-            <select [(ngModel)]="nuevoNumero" class="input-field">
-              <option [value]="1">1ra (1–15)</option>
-              <option [value]="2">2da (16–fin)</option>
-            </select>
-          </div>
-        </div>
+
+        <!--
+          El modal de creacion de quincena desaparecio: las quincenas se
+          autogeneran al confirmar la programacion semanal (RN-35), de modo
+          que ya no hay nada que crear a mano.
+
+          En su lugar, este boton dispara el cierre diario de jornadas.
+        -->
+        <p>Resuelve las jornadas cuya ventana ya vencio sin completarse:</p>
+        <ul class="lista-info">
+          <li>Sin marcacion y sin ausencia que la cubra, pasa a <strong>falta injustificada</strong>.</li>
+          <li>Con entrada pero sin salida, pasa a <strong>marcacion incompleta</strong> y queda para revision.</li>
+          <li>Con permiso, falta justificada o feriado, se cierra sin generar falta.</li>
+        </ul>
         <div class="preview-periodo">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          {{ nuevoNumero === 1 ? 'Período: 1 al 15' : 'Período: 16 al fin' }} de {{ MESES[nuevoMes] }} {{ nuevoAnio }}
+          El proceso ya corre solo cada hora. Ejecutarlo aqui adelanta esa corrida;
+          es idempotente y nunca inventa una hora de salida.
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="mostrarModalQ=false" [disabled]="isProcesando">Cancelar</button>
-        <button class="btn-guardar" (click)="crearQuincena()" [disabled]="isProcesando">
-          {{ isProcesando ? 'Creando...' : 'Crear quincena' }}
+        <button class="btn-guardar" (click)="ejecutarCierreDiario()" [disabled]="isProcesando">
+          {{ isProcesando ? 'Procesando...' : 'Ejecutar ahora' }}
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Resultado de la corrida del cierre diario -->
+@if (resultadoCierre) {
+  <div class="modal-overlay" (click)="cerrarResultadoCierre()">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Cierre diario ejecutado</h3>
+        <button class="modal-close" (click)="cerrarResultadoCierre()">X</button>
+      </div>
+      <div class="modal-body">
+        @if (resultadoCierre.total === 0) {
+          <p>No habia jornadas vencidas sin resolver.</p>
+        } @else {
+          <ul class="lista-info">
+            <li><strong>{{ resultadoCierre.faltasInjustificadas }}</strong> falta(s) injustificada(s)</li>
+            <li><strong>{{ resultadoCierre.marcacionesIncompletas }}</strong> marcacion(es) incompleta(s), pendientes de revision</li>
+            <li><strong>{{ resultadoCierre.cubiertasPorAusencia }}</strong> cubierta(s) por permiso, falta justificada o feriado</li>
+          </ul>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn-guardar" (click)="cerrarResultadoCierre()">Entendido</button>
       </div>
     </div>
   </div>
@@ -268,12 +370,47 @@
       <div class="modal-header">
         <div>
           <h3>Revisar asistencia</h3>
-          <span class="modal-sub">{{ asistenciaVal.nombreCompleto }} — {{ asistenciaVal.fecha }}</span>
+          <span class="modal-sub">{{ asistenciaVal.nombreCompleto }} — {{ asistenciaVal.fecha | fechaPe }}</span>
         </div>
         <button class="modal-close" (click)="mostrarModalVal=false">✕</button>
       </div>
       <div class="modal-body">
         @if (errorVal) { <div class="alerta-error">{{ errorVal }}</div> }
+
+        <!--
+          Un registro ya revisado SÍ se puede volver a revisar: la
+          precondición de CU15 y CU18 es que la quincena esté abierta, no
+          que el registro esté sin tocar, y RN-33 fija el límite en el
+          consolidado. Pero conviene avisarlo, para que nadie sobrescriba
+          una decisión ajena sin darse cuenta.
+        -->
+        @if (asistenciaVal.estado === 'REVISADO') {
+          <div class="aviso-rerevision">
+            <strong>Este registro ya fue resuelto</strong>
+            <!-- En el modal sí hay espacio para la fecha completa. -->
+            ({{ detalleRevision(asistenciaVal) }}).
+            Puedes rectificarlo mientras la quincena siga abierta; el cambio
+            queda en auditoría con el valor anterior.
+            @if (asistenciaVal.observacion) {
+              <div style="margin-top:6px">
+                Motivo anterior: «{{ asistenciaVal.observacion }}»
+              </div>
+            }
+          </div>
+        }
+
+        @if (asistenciaVal.permisoAsociado || asistenciaVal.faltaJustificadaAsociada) {
+          <div class="aviso-rerevision">
+            El trabajador tiene
+            <strong>{{ asistenciaVal.permisoAsociado
+                     || asistenciaVal.faltaJustificadaAsociada }}</strong>
+            registrado para esta fecha.
+            @if (asistenciaVal.ingresoReal) {
+              Aun así marcó entrada, de modo que la jornada real manda y sus
+              horas se pagan. Decide si la ausencia se mantiene o se retira.
+            }
+          </div>
+        }
 
         <!-- Resumen del día -->
         <div class="resumen-dia">
@@ -364,15 +501,25 @@
           </div>
         </div>
 
-        <!-- Tipo de asistencia -->
+        <!--
+          Resultado de la validación (CU18, RN-33).
+
+          Reemplaza al selector de "clasificación", que ofrecía FALTA y
+          PERMISO. Esos valores ya no existen como tipos editables a mano:
+          la falta la genera el cierre diario cuando la jornada vence sin
+          resolverse, y el permiso es una entidad propia con sus fechas,
+          que se registra en Permisos y Faltas.
+        -->
         <div class="form-group">
-          <label>Clasificación</label>
-          <select [(ngModel)]="valTipo" class="input-field">
-            <option value="PROGRAMADA">Programada</option>
-            <option value="NO_PROGRAMADA">No programada</option>
-            <option value="FALTA">Falta</option>
-            <option value="PERMISO">Permiso / Recuperable</option>
+          <label>Resultado de la validación</label>
+          <select [(ngModel)]="valResultado" class="input-field">
+            <option value="APROBADO">Aprobar el tiempo adicional</option>
+            <option value="RECHAZADO">Rechazar el tiempo adicional</option>
           </select>
+          <small class="hint-campo">
+            Los minutos que apruebes se reconocen como hora extra. Los que no,
+            no se cuentan en el consolidado.
+          </small>
         </div>
 
         <!-- Observación -->

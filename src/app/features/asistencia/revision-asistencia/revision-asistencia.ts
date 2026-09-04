@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FechaPePipe } from '../../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { RevisionAsistenciaService } from '../../../core/services/revision-asistencia.service';
 
 @Component({
   selector: 'app-revision-asistencia',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FechaPePipe],
   templateUrl: './revision-asistencia.html',
   styleUrl:    './revision-asistencia.css'
 })
@@ -29,6 +30,16 @@ export class RevisionAsistenciaComponent implements OnInit {
   filtroEstado     = '';
   filtroTipo       = '';
 
+  /**
+   * Filtro por revisión pendiente.
+   *
+   * Es el que la especificación pide y el que de verdad importa:
+   * requiereRevision es justo lo que bloquea el cierre de quincena
+   * (RN-37). Filtrar por estado no sirve, porque una falta injustificada
+   * y una jornada revisada a mano comparten estado REVISADO.
+   */
+  soloPendientesRevision = false;
+
   // ── Modal: crear quincena ─────────────────────────────────
   mostrarModalQ    = false;
   nuevoAnio        = new Date().getFullYear();
@@ -36,13 +47,25 @@ export class RevisionAsistenciaComponent implements OnInit {
   nuevoNumero      = 1;
   errorQ           = '';
 
+  /** Resumen de la última corrida del cierre diario (CU29). */
+  resultadoCierre: any = null;
+
   // ── Modal: validar tiempos ────────────────────────────────
   mostrarModalVal    = false;
   asistenciaVal: any = null;
   valPrev            = 0;
   valPost            = 0;
   valObservacion     = '';
-  valTipo            = '';
+  /**
+   * Resultado de la validación de hora extra excepcional: APROBADO o
+   * RECHAZADO (CU18, RN-33).
+   *
+   * Reemplaza al antiguo selector de "clasificación", que ofrecía FALTA y
+   * PERMISO. Esos valores ya no existen: la falta la genera el cierre
+   * diario y el permiso es una entidad propia con sus fechas. Cambiar el
+   * tipo a mano desde aquí habría sido reescribir un hecho.
+   */
+  valResultado       = 'APROBADO';
   errorVal           = '';
 
   // ── Modal: asistencia no programada ──────────────────────
@@ -73,6 +96,7 @@ export class RevisionAsistenciaComponent implements OnInit {
   seleccionarQuincena(q: any) {
     this.quincenaActual = q;
     this.filtroNombre = this.filtroEstado = this.filtroTipo = '';
+    this.soloPendientesRevision = false;
     this.cargarAsistencias();
   }
 
@@ -85,22 +109,39 @@ export class RevisionAsistenciaComponent implements OnInit {
     });
   }
 
-  crearQuincena() {
+  /**
+   * Ejecuta el cierre diario a mano (CU29).
+   *
+   * Reemplaza a crearQuincena(), que desapareció: las quincenas se
+   * autogeneran al confirmar la programación semanal (RN-35).
+   *
+   * El proceso corre solo cada hora, pero dispararlo a mano sirve para
+   * regularizar sin esperar. Es idempotente: solo toca jornadas cuya
+   * ventana ya venció sin completarse.
+   */
+  ejecutarCierreDiario() {
     this.errorQ = '';
     this.isProcesando = true;
-    this.svc.crearQuincena(this.nuevoAnio, this.nuevoMes, this.nuevoNumero).subscribe({
-      next: () => {
+    this.resultadoCierre = null;
+
+    this.svc.ejecutarCierreDiario().subscribe({
+      next: (r: any) => {
         this.isProcesando = false;
         this.mostrarModalQ = false;
+        this.resultadoCierre = r;
         this.cargarQuincenas();
+        if (this.quincenaActual) this.cargarAsistencias();
+        this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorQ = e.error?.message || 'Error al crear quincena.';
+        this.errorQ = e.error?.message || 'Error al ejecutar el cierre diario.';
         this.isProcesando = false;
         this.cdr.detectChanges();
       }
     });
   }
+
+  cerrarResultadoCierre() { this.resultadoCierre = null; }
 
   // ── Filtros ───────────────────────────────────────────────
   get asistenciasFiltradas(): any[] {
@@ -109,8 +150,29 @@ export class RevisionAsistenciaComponent implements OnInit {
       const ok1 = !this.filtroNombre || nombre.includes(this.filtroNombre.toLowerCase());
       const ok2 = !this.filtroEstado || a.estado === this.filtroEstado;
       const ok3 = !this.filtroTipo  || a.tipo   === this.filtroTipo;
-      return ok1 && ok2 && ok3;
+      const ok4 = !this.soloPendientesRevision || a.requiereRevision === true;
+      return ok1 && ok2 && ok3 && ok4;
     });
+  }
+
+  /**
+   * Quién resolvió el registro.
+   *
+   * Una falta injustificada que cerró el proceso automático y una jornada
+   * que revisó una persona comparten estado REVISADO y se veían idénticas.
+   * Cuando revisadoPor viene vacío, fue el cierre diario (CU29).
+   */
+  resueltoPor(a: any): string {
+    return a.revisadoPor || 'resuelto por el sistema';
+  }
+
+  /** Detalle con fecha, para el tooltip. Alargaba demasiado la fila. */
+  detalleRevision(a: any): string {
+    if (!a.revisadoPor) return 'Resuelto automáticamente por el cierre diario';
+    const cuando = a.revisadoEn
+      ? ` el ${a.revisadoEn.substring(0, 16).replace('T', ' a las ')}`
+      : '';
+    return `Revisado por ${a.revisadoPor}${cuando}`;
   }
 
   // ── Validar tiempos ───────────────────────────────────────
@@ -119,20 +181,28 @@ export class RevisionAsistenciaComponent implements OnInit {
     this.valPrev        = a.valMinPrevIng ?? 0;
     this.valPost        = a.valMinPostSal ?? 0;
     this.valObservacion = a.observacion   ?? '';
-    this.valTipo        = a.tipo;
+    this.valResultado   = a.resultadoValidacion || 'APROBADO';
     this.errorVal       = '';
     this.mostrarModalVal = true;
   }
 
   guardarValidacion() {
     if (!this.asistenciaVal) return;
+
+    // El motivo es obligatorio (RN-02). El backend lo exige; validarlo
+    // aquí evita el viaje y señala el campo.
+    if (!this.valObservacion?.trim()) {
+      this.errorVal = 'El motivo o comentario es obligatorio.';
+      return;
+    }
+
     this.isProcesando = true; this.errorVal = '';
     this.svc.validarTiempos({
       idAsistencia:  this.asistenciaVal.idAsistencia,
       valMinPrevIng: this.valPrev,
       valMinPostSal: this.valPost,
       observacion:   this.valObservacion,
-      tipo:          this.valTipo
+      resultado:     this.valResultado
     }).subscribe({
       next: (actualizada: any) => {
         const idx = this.asistencias.findIndex(
@@ -158,16 +228,27 @@ export class RevisionAsistenciaComponent implements OnInit {
   }
 
   guardarNoProgramada() {
-    if (!this.npIdTrabajador || !this.npFecha || !this.npIngreso) {
-      this.errorNP = 'Trabajador, fecha e ingreso son obligatorios.'; return;
+    // Ingreso y salida son opcionales POR SEPARADO, pero al menos uno
+    // hace falta. La contingencia con dato parcial conocido es el caso
+    // más frecuente cuando el lector falla a media jornada, y exigir
+    // ambos obligaba a inventar el que faltaba.
+    if (!this.npIdTrabajador || !this.npFecha) {
+      this.errorNP = 'El trabajador y la fecha son obligatorios.'; return;
     }
+    if (!this.npIngreso && !this.npSalida) {
+      this.errorNP = 'Indica al menos la hora de ingreso o la de salida.'; return;
+    }
+    if (!this.npObservacion?.trim()) {
+      this.errorNP = 'El motivo es obligatorio.'; return;
+    }
+
     this.isProcesando = true; this.errorNP = '';
-    this.svc.registrarNoProgramada({
+    this.svc.registrarContingencia({
       idTrabajador: Number(this.npIdTrabajador),
       fecha:        this.npFecha,
-      ingresoReal:  this.npIngreso,
+      ingresoReal:  this.npIngreso || undefined,
       salidaReal:   this.npSalida  || undefined,
-      observacion:  this.npObservacion || undefined
+      observacion:  this.npObservacion
     }).subscribe({
       next: (nueva: any) => {
         // Si la quincena seleccionada coincide, agregar a la lista

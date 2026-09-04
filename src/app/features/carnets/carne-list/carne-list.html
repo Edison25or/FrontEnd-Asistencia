@@ -19,7 +19,7 @@
   <!-- INFO -->
   <div class="info-box">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span>Cada trabajador genera un PDF con <strong>dos carnés</strong> juntos (8.5 × 12.4 cm): <strong style="color:#16a34a">ENTRADA</strong> y <strong style="color:#6b7280">SALIDA</strong>. Imprímelo, dóblalo y enmiélalo.</span>
+    <span>Cada trabajador genera <strong>un carné</strong> (6.2 × 8.5 cm) con <strong style="color:#16a34a">un único código</strong>. El mismo código sirve para entrada y salida: el sistema deduce cuál corresponde según el estado de la jornada.</span>
   </div>
 
   <!-- TABLA -->
@@ -66,8 +66,20 @@
             </td>
             <td style="text-align:center">
               <div class="codigos">
-                <span class="codigo-badge entrada">{{ t.idTrabajador }}IN</span>
-                <span class="codigo-badge salida">{{ t.idTrabajador }}OU</span>
+                <!--
+                  Un solo código por trabajador (RT-02). Los sufijos IN y OU
+                  desaparecen: el sistema deduce entrada o salida del estado
+                  de la jornada, no del código escaneado.
+
+                  El valor viene del backend en codigoBarras; no se
+                  construye aquí concatenando el identificador.
+                -->
+                <span class="codigo-badge entrada" *ngIf="t.codigoBarras">
+                  {{ t.codigoBarras }}
+                </span>
+                <span class="codigo-badge salida" *ngIf="!t.codigoBarras">
+                  sin código
+                </span>
               </div>
             </td>
             <td style="text-align:center" (click)="$event.stopPropagation()">

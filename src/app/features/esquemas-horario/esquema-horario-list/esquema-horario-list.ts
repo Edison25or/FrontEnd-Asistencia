@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { EsquemaHorarioService } from '../../../core/services/esquema-horario.service';
 import { AuthService } from '../../../core/services/auth';
+import { TurnoService, Turno } from '../../../core/services/turno.service';
 
 const DIAS = [
   { diaSemana: 6, nombre: 'Sábado' },
@@ -25,10 +26,12 @@ export class EsquemaHorarioListComponent implements OnInit {
 
   private service     = inject(EsquemaHorarioService);
   private authService = inject(AuthService);
+  private turnoService = inject(TurnoService);
   private fb          = inject(FormBuilder);
   private cdr         = inject(ChangeDetectorRef);
 
-  grupos:   any[]  = [];   // cada elemento es un EsquemaGrupoResponse
+  grupos:   any[]  = [];
+  turnos: Turno[] = [];   // cada elemento es un EsquemaGrupoResponse
   isLoading        = true;
   rolUsuario       = '';
 
@@ -92,6 +95,11 @@ export class EsquemaHorarioListComponent implements OnInit {
   }
 
   ngOnInit() {
+    // El turno es obligatorio en el esquema (RN-18): reemplaza la
+    // clasificación por umbral horario fijo del prototipo.
+    this.turnoService.getAll().subscribe({
+      next: (t: Turno[]) => { this.turnos = t; this.cdr.detectChanges(); }
+    });
     this.rolUsuario = this.authService.getRolUsuario() || '';
     this.initForm();
     this.cargar();
@@ -111,8 +119,16 @@ export class EsquemaHorarioListComponent implements OnInit {
     this.esquemaForm = this.fb.group({
       nombre:            ['', [Validators.required, Validators.maxLength(80)]],
       descripcion:       ['', Validators.maxLength(200)],
-      toleranciaMinutos: [10, [Validators.required, Validators.min(0), Validators.max(60)]],
-      horariosDia:       this.fb.array(DIAS.map(d => this.crearDiaGroup(d.diaSemana, false)))
+      // El turno determina cómo se clasifican las horas en el consolidado
+      // (RN-18, RN-25). Obligatorio.
+      idTurno:             [null, Validators.required],
+      // Una sola tolerancia no permitía distinguir una entrada anticipada
+      // normal de una que dispara la confirmación por doble escaneo, así
+      // que se desdobla en tres (RN-17).
+      toleranciaTardanza:  [10, [Validators.required, Validators.min(0), Validators.max(120)]],
+      toleranciaPrevia:    [15, [Validators.required, Validators.min(0), Validators.max(120)]],
+      toleranciaPosterior: [15, [Validators.required, Validators.min(0), Validators.max(120)]],
+      horariosDia:         this.fb.array(DIAS.map(d => this.crearDiaGroup(d.diaSemana, false)))
     });
   }
 
@@ -180,6 +196,28 @@ export class EsquemaHorarioListComponent implements OnInit {
     return `${String(Math.floor(total/60)%24).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
   }
 
+  /**
+   * true si la jornada termina en el día calendario siguiente.
+   *
+   * Es el caso normal del turno noche y conviene señalarlo: una salida
+   * "07:00" con entrada "22:45" no es un error de captura, y sin la marca
+   * parece que el horario está mal configurado.
+   */
+  salidaCruzaMedianoche(index: number, version = false): boolean {
+    const arr  = version ? this.horariosDiaVersionArray : this.horariosDiaArray;
+    const ctrl = arr?.at(index);
+    if (!ctrl || ctrl.get('esDescanso')!.value) return false;
+
+    const entrada = ctrl.get('horaEntrada')!.value;
+    const netos   = Number(ctrl.get('minutosNetos')!.value) || 0;
+    const refrig  = Number(ctrl.get('minutosRefrigerio')!.value) || 0;
+    const extra   = Number(ctrl.get('minutosExtraProgramado')!.value) || 0;
+    if (!entrada || netos === 0) return false;
+
+    const [h, m] = entrada.split(':').map(Number);
+    return (h * 60 + m + netos + refrig + extra) >= 24 * 60;
+  }
+
   getNombreDia(ds: number): string { return DIAS.find(d => d.diaSemana === ds)?.nombre || ''; }
   formatMin(min: number): string {
     if (!min) return '00:00';
@@ -202,7 +240,10 @@ export class EsquemaHorarioListComponent implements OnInit {
     const raw = this.esquemaForm.getRawValue();
     const payload = {
       nombre: raw.nombre, descripcion: raw.descripcion,
-      toleranciaMinutos: raw.toleranciaMinutos,
+      idTurno:             raw.idTurno,
+      toleranciaTardanza:  raw.toleranciaTardanza,
+      toleranciaPrevia:    raw.toleranciaPrevia,
+      toleranciaPosterior: raw.toleranciaPosterior,
       horariosDia: raw.horariosDia.map((d: any) => ({
         diaSemana: d.diaSemana, esDescanso: d.esDescanso,
         horaEntrada:            d.esDescanso ? null : d.horaEntrada,
@@ -230,7 +271,10 @@ export class EsquemaHorarioListComponent implements OnInit {
     this.versionForm = this.fb.group({
       vigenteDesde:      ['', Validators.required],
       descripcion:       [v?.descripcion || '', Validators.maxLength(200)],
-      toleranciaMinutos: [v?.toleranciaMinutos || 10, [Validators.min(0), Validators.max(60)]],
+      idTurno:             [v?.idTurno ?? null, Validators.required],
+      toleranciaTardanza:  [v?.toleranciaTardanza  ?? 10, [Validators.min(0), Validators.max(120)]],
+      toleranciaPrevia:    [v?.toleranciaPrevia    ?? 15, [Validators.min(0), Validators.max(120)]],
+      toleranciaPosterior: [v?.toleranciaPosterior ?? 15, [Validators.min(0), Validators.max(120)]],
       horariosDia: this.fb.array(
         DIAS.map(d => {
           const dData = v?.horariosDia?.find((h: any) => h.diaSemana === d.diaSemana);
@@ -251,7 +295,10 @@ export class EsquemaHorarioListComponent implements OnInit {
     const payload = {
       vigenteDesde: raw.vigenteDesde,
       descripcion: raw.descripcion,
-      toleranciaMinutos: raw.toleranciaMinutos,
+      idTurno:             raw.idTurno,
+      toleranciaTardanza:  raw.toleranciaTardanza,
+      toleranciaPrevia:    raw.toleranciaPrevia,
+      toleranciaPosterior: raw.toleranciaPosterior,
       horariosDia: raw.horariosDia.map((d: any) => ({
         diaSemana: d.diaSemana, esDescanso: d.esDescanso,
         horaEntrada:            d.esDescanso ? null : d.horaEntrada,

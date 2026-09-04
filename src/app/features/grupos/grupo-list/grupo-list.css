@@ -283,3 +283,40 @@
 .detalle-vacio  { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px; }
 .detalle-vacio p{ color: #9ca3af; font-size: .88rem; margin: 0; }
 .advertencia    { background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; font-size: .82rem; color: #92400e; margin-top: 8px; }
+
+/* ══════════════════════════════════════════════════════════ */
+/* SELECTOR DE ÁREA                                            */
+/* ══════════════════════════════════════════════════════════ */
+/*
+   Era un select sin estilo, que desentonaba con el resto del formulario.
+   La flecha se dibuja como imagen de fondo porque appearance:none
+   elimina la nativa.
+*/
+.select-area {
+  width: 100%;
+  padding: 10px 34px 10px 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #111827;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+.select-area:hover  { border-color: #9ca3af; }
+.select-area:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.18);
+}
+.select-area.campo-invalido {
+  border-color: #f87171;
+  background-color: #fef2f2;
+}

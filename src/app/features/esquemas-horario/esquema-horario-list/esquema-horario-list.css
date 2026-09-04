@@ -323,3 +323,183 @@ p { color: #374151; font-size: 0.9rem; }
 
 /* Contenido expandible */
 .version-detalle { padding: 0 14px 12px; }
+
+/* ══════════════════════════════════════════════════════════ */
+/* REDISEÑO DEL FORMULARIO DE ESQUEMA                          */
+/* ══════════════════════════════════════════════════════════ */
+/*
+   El problema del diseño anterior: los siete días quedaban dentro de un
+   modal de 860px con scroll vertical, de modo que solo se veían cuatro a
+   la vez. Configurar una semana obligaba a subir y bajar comparando
+   valores que no cabían juntos en pantalla.
+
+   Ahora el modal es más ancho y se divide en dos columnas: la semana
+   completa a la izquierda, siempre visible, y los ajustes del esquema en
+   un lateral estrecho a la derecha.
+*/
+.modal-esquema { max-width: 1180px; }
+
+.esquema-layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 22px;
+  align-items: start;
+}
+
+/* ── Lateral de ajustes ─────────────────────────────────── */
+.esquema-lateral {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  position: sticky;
+  top: 0;
+}
+.lateral-titulo {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lateral-titulo + .lateral-titulo { margin-top: 4px; }
+
+/* Tolerancias: campos angostos, la unidad va fuera del input. */
+.tol-campo { display: flex; flex-direction: column; gap: 4px; }
+.tol-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tol-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+}
+.tol-input {
+  width: 68px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.86rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+}
+.tol-input:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.18);
+}
+.tol-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+/*
+   Los inputs de texto del lateral heredaban el estilo del navegador y
+   quedaban con borde fino azulado, distinto del resto del formulario.
+   Se igualan al selector de turno y a los campos de tolerancia.
+*/
+.esquema-lateral input[type="text"],
+.esquema-lateral input[type="date"] {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 0.86rem;
+  font-family: inherit;
+  color: #1e293b;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+.esquema-lateral input[type="text"]:hover,
+.esquema-lateral input[type="date"]:hover { border-color: #94a3b8; }
+
+.esquema-lateral input[type="text"]:focus,
+.esquema-lateral input[type="date"]:focus,
+.esquema-lateral input[type="number"]:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.18);
+}
+.esquema-lateral input::placeholder { color: #b6c2d1; }
+
+/* El borde rojo solo aparece tras tocar el campo, no al abrir el modal. */
+.esquema-lateral input.ng-invalid.ng-touched { border-color: #f87171; background: #fef2f2; }
+
+/* ── Selector de turno, con estilo propio ───────────────── */
+/*
+   Era un select sin estilo, que desentonaba con el resto del formulario.
+   La flecha se dibuja como fondo porque appearance:none la elimina.
+*/
+.select-turno {
+  width: 100%;
+  padding: 9px 32px 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: #1e293b;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.select-turno:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.18);
+}
+.select-turno.campo-invalido { border-color: #f87171; background-color: #fef2f2; }
+
+/* ── Tabla de días, sin scroll ──────────────────────────── */
+.dias-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dias-panel .dias-table { margin: 0; }
+.dias-panel .dias-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.dias-panel .dias-table td { padding: 7px 8px; }
+
+/* Fila de descanso: se atenúa pero sigue siendo legible. */
+.dias-table tr.row-descanso td { color: #94a3b8; }
+
+.td-salida-cruza {
+  color: #dc2626;
+  font-weight: 700;
+}
+.badge-dia-sig {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  border-radius: 10px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
+
+/* En pantallas estrechas el lateral pasa arriba. */
+@media (max-width: 1080px) {
+  .esquema-layout { grid-template-columns: 1fr; }
+  .esquema-lateral { position: static; }
+}

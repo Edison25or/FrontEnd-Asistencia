@@ -89,10 +89,22 @@ export class TrabajadorService {
   // REINGRESO
   // =============================
 
-  reingresarTrabajador(id: number, idPuesto: number): Observable<any> {
+  /**
+   * Reingreso. El puesto es OPCIONAL (RN-12): sin enviarlo, el backend
+   * conserva el del registro anterior.
+   *
+   * La firma exigía number y llamaba a idPuesto.toString() sin comprobar
+   * nada, de modo que al omitirlo reventaba con "Cannot read properties
+   * of undefined" ANTES de salir a la red. El modal se quedaba congelado
+   * sin mostrar error, porque la excepción ocurría fuera del flujo del
+   * observable y no la capturaba el bloque error.
+   */
+  reingresarTrabajador(id: number, idPuesto?: number): Observable<any> {
 
-    const params = new HttpParams()
-      .set('idPuesto', idPuesto.toString());
+    let params = new HttpParams();
+    if (idPuesto != null) {
+      params = params.set('idPuesto', String(idPuesto));
+    }
 
     return this.http.post<any>(
       `${this.apiUrl}/${id}/reingreso`,

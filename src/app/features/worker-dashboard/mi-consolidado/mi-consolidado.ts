@@ -1,12 +1,13 @@
 import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FechaPePipe } from '../../../shared/fecha-pe.pipe';
 import { ConsolidadoService } from '../../../core/services/consolidado.service';
 import { AuthService } from '../../../core/services/auth';
 
 @Component({
   selector: 'app-mi-consolidado',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FechaPePipe],
   templateUrl: './mi-consolidado.html',
   styleUrl: './mi-consolidado.css'
 })

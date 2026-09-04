@@ -254,23 +254,57 @@ export class ProgramacionSemanalComponent implements OnInit {
     this.mostrarModalEliminarGrupo = true;
   }
 
+  /**
+   * Quita del esquema todas las programaciones del grupo.
+   *
+   * ============================================================
+   * POR QUE NO BORRABA NADA
+   * ============================================================
+   * Buscaba los miembros en grupoParaQuitar.trabajadores, pero la tarjeta
+   * de grupo NO tiene ese campo: getGruposDeEsquema() la construye a
+   * partir del snapshot de las programaciones y le pone
+   * `programaciones`, no `trabajadores`.
+   *
+   * El resultado era un Set vacio, ningun elemento coincidia, y la guarda
+   * `if (!aEliminar.length)` cerraba el modal en silencio. Parecia que la
+   * accion se ejecutaba y no pasaba nada.
+   *
+   * Ahora se usan directamente las programaciones que la propia tarjeta
+   * ya trae. Ademas es mas correcto: el snapshot refleja quien estaba en
+   * el grupo AL PROGRAMAR la semana, mientras que la composicion actual
+   * del grupo pudo cambiar despues. Cruzar contra la actual habria dejado
+   * sin borrar a quien ya salio del grupo.
+   */
   quitarGrupoDeEsquema() {
-    const progs       = this.getProgramacionesByEsquema(this.esquemaParaQuitar.idEsquema);
-    const idsDelGrupo = new Set((this.grupoParaQuitar.trabajadores || []).map((t: any) => t.idTrabajador));
-    const aEliminar   = progs.filter(p => idsDelGrupo.has(p.idTrabajador));
-    if (!aEliminar.length) { this.mostrarModalEliminarGrupo = false; return; }
+    if (!this.grupoParaQuitar || !this.esquemaParaQuitar) return;
+
+    const aEliminar: any[] = this.grupoParaQuitar.programaciones ?? [];
+
+    if (!aEliminar.length) {
+      this.mostrarModalEliminarGrupo = false;
+      this.mostrarError('No se encontraron asignaciones que quitar para este grupo.');
+      return;
+    }
 
     this.isProcesando = true;
-    forkJoin(aEliminar.map(p => this.programacionService.eliminar(p.idProgramacion))).subscribe({
-      next: () => {
-        this.isProcesando          = false;
-        this.mostrarModalEliminarGrupo = false;
-        this.grupoParaQuitar       = null;
-        this.esquemaParaQuitar     = null;
-        this.cargarProgramaciones();
-      },
-      error: () => { this.isProcesando = false; this.cdr.detectChanges(); }
-    });
+    forkJoin(aEliminar.map((p: any) => this.programacionService.eliminar(p.idProgramacion)))
+      .subscribe({
+        next: () => {
+          this.isProcesando              = false;
+          this.mostrarModalEliminarGrupo = false;
+          this.grupoParaQuitar           = null;
+          this.esquemaParaQuitar         = null;
+          this.cargarProgramaciones();
+        },
+        error: (err: any) => {
+          // Antes el error se tragaba sin avisar. Una semana ya pasada,
+          // por ejemplo, la rechaza el backend y el usuario no veia nada.
+          this.isProcesando = false;
+          this.mostrarModalEliminarGrupo = false;
+          this.mostrarError(err.error?.message || 'No se pudo quitar el grupo del esquema.');
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   // ── Confirmación final de semana (punto 5) ────────────────

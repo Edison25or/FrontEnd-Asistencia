@@ -111,6 +111,28 @@
             <label>Descripción <span class="opcional">(opcional)</span></label>
             <input type="text" formControlName="descripcion" placeholder="Descripción corta del grupo" maxlength="150">
           </div>
+
+          <!--
+            Área obligatoria (RN-20). Un grupo pertenece a una sola área y
+            todos sus miembros deben ser de ella; el listado de disponibles
+            se filtra en consecuencia.
+          -->
+          <div class="form-group">
+            <label>Área <span class="req">*</span></label>
+            <select formControlName="idArea" (change)="onAreaChange()" class="select-area"
+                    [class.campo-invalido]="grupoForm.get('idArea')?.invalid && grupoForm.get('idArea')?.touched">
+              <option [ngValue]="null">Selecciona un área…</option>
+              @for (a of areas; track a.idArea) {
+                <option [ngValue]="a.idArea">{{ a.area }}</option>
+              }
+            </select>
+            @if (grupoForm.get('idArea')?.invalid && grupoForm.get('idArea')?.touched) {
+              <span class="form-error">El área es obligatoria</span>
+            }
+            <small class="form-hint">
+              Solo se ofrecen trabajadores de esta área que no pertenezcan ya a otro grupo.
+            </small>
+          </div>
         </form>
 
         <!-- Buscador -->

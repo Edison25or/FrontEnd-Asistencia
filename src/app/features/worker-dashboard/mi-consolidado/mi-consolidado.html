@@ -12,7 +12,7 @@
              (click)="seleccionarQuincena(q.idQuincena)">
           <div class="quincena-info">
             <span class="quincena-desc">{{ q.descripcion }}</span>
-            <span class="quincena-periodo">{{ q.fechaInicio }} → {{ q.fechaFin }}</span>
+            <span class="quincena-periodo">{{ q.inicio | fechaPe }} → {{ q.fin | fechaPe }}</span>
           </div>
           <svg class="quincena-chevron" [class.abierto]="quincenaSeleccionada === q.idQuincena"
                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -69,19 +69,27 @@
                   <div class="detalle-fila">
                     <span>Permisos</span><strong>{{ detalle.diasPermiso }} días</strong>
                   </div>
+                  <div class="detalle-fila">
+                    <span>Faltas justificadas</span><strong>{{ detalle.diasFaltaJustificada }} días</strong>
+                  </div>
                   <div class="detalle-fila total destacado">
                     <span>Total general</span><strong>{{ detalle.hTotalGeneral }}</strong>
                   </div>
                 </div>
 
                 <div class="detalle-seccion">
-                  <h4>Bolsa de horas</h4>
-                  <div class="detalle-fila">
-                    <span>Entrada</span><strong>{{ detalle.hBolsaEntrada }}</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Salida</span><strong>{{ detalle.hBolsaSalida }}</strong>
-                  </div>
+                  <h4>Horas por turno</h4>
+                  @for (t of detalle.totalesPorTurno; track t.turno + t.esFeriado) {
+                    <div class="detalle-fila">
+                      <span>{{ t.turno }}{{ t.esFeriado ? ' (feriado)' : '' }}</span>
+                      <strong>{{ t.hNormales }}<span *ngIf="t.minExtra > 0"> + {{ t.hExtra }} extra</span></strong>
+                    </div>
+                  }
+                  @if (!detalle.totalesPorTurno || detalle.totalesPorTurno.length === 0) {
+                    <div class="detalle-fila">
+                      <span>Sin horas registradas</span><strong>—</strong>
+                    </div>
+                  }
                 </div>
               </div>
             }

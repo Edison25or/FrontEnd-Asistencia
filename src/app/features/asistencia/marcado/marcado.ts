@@ -18,7 +18,11 @@ export class MarcadoComponent implements OnInit, OnDestroy {
   @ViewChild('codigoInput') codigoInput!: ElementRef;
 
   codigoBarras = '';
-  estado: 'ESPERA' | 'PROCESANDO' | 'EXITO' | 'ERROR' = 'ESPERA';
+  // CONFIRMACION es un estado nuevo: el backend pidió el segundo escaneo
+  // de una entrada anticipada y todavía NO ha guardado nada (HU-22).
+  // Antes se trataba como éxito, así que la pantalla mostraba el mensaje
+  // verde de registro exitoso sobre una jornada que seguía sin marcar.
+  estado: 'ESPERA' | 'PROCESANDO' | 'EXITO' | 'ERROR' | 'CONFIRMACION' = 'ESPERA';
   ultimoRegistro: any = null;
   mensajeError = '';
 
@@ -30,6 +34,11 @@ export class MarcadoComponent implements OnInit, OnDestroy {
   private relojInterval: any;
   private resetTimeout:  any;
 
+  // ── Confirmación por doble escaneo (HU-22) ────────────────
+  /** Segundos que quedan para volver a pasar el código. */
+  segundosRestantes = 0;
+  private cuentaAtras: any;
+
   ngOnInit() {
     this.iniciarReloj();
     this.cargarEnPlanta();
@@ -39,6 +48,7 @@ export class MarcadoComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     clearInterval(this.relojInterval);
     clearTimeout(this.resetTimeout);
+    clearInterval(this.cuentaAtras);
   }
 
   iniciarReloj() {
@@ -66,6 +76,7 @@ export class MarcadoComponent implements OnInit, OnDestroy {
     const codigo = this.codigoBarras.trim().toUpperCase();
     if (!codigo) return;
 
+    clearInterval(this.cuentaAtras);
     this.estado = 'PROCESANDO';
     this.codigoBarras = '';
     this.cdr.detectChanges();
@@ -74,6 +85,27 @@ export class MarcadoComponent implements OnInit, OnDestroy {
       next: (res) => {
         setTimeout(() => {
           this.ultimoRegistro = res;
+
+          // ── Entrada anticipada: falta confirmar (HU-22) ──
+          // No se ha guardado nada todavía. El trabajador tiene unos
+          // segundos para volver a pasar el código; si no lo hace, la
+          // ventana vence y no queda registro.
+          if (res?.accion === 'CONFIRMACION_REQUERIDA') {
+            this.iniciarConfirmacion(res.segundosParaConfirmar ?? 25);
+            return;
+          }
+
+          // ── Escaneo descartado por anti-rebote (HU-53) ──
+          // Se vuelve al estado de espera sin ruido: quien pasó el carné
+          // dos veces sin querer no necesita un mensaje de error.
+          if (res?.accion === 'IGNORADO') {
+            this.estado = 'ESPERA';
+            this.ultimoRegistro = null;
+            this.cdr.detectChanges();
+            this.codigoInput?.nativeElement.focus();
+            return;
+          }
+
           this.estado = 'EXITO';
           this.cdr.detectChanges();
           this.cargarEnPlanta();
@@ -103,38 +135,114 @@ export class MarcadoComponent implements OnInit, OnDestroy {
 
   refocus() { this.codigoInput?.nativeElement.focus(); }
 
+  // ════════════════════════════════════════════════════════════
+  // CONFIRMACIÓN POR DOBLE ESCANEO (HU-22)
+  // ════════════════════════════════════════════════════════════
+
   /**
-   * Lee el estado diario del registro (A_TIEMPO / TARDE).
-   * El nuevo DTO devuelve 'estadoDiario' para el resultado del día.
-   * 'estado' ahora contiene el workflow (MARCADO, CALCULADO…) — no sirve aquí.
-   * Fallback a 'estado' para compatibilidad con registros pre-migración.
+   * Abre la ventana de confirmación y arranca la cuenta atrás.
+   *
+   * El foco vuelve al input de inmediato: el trabajador tiene que poder
+   * pasar el código otra vez sin tocar nada. El segundo escaneo entra por
+   * onCodigoLeido() como cualquier otro, y el backend, que recuerda la
+   * confirmación pendiente, lo interpreta como tal.
    */
-  private getEstadoDiario(registro: any): string {
-    return registro?.estadoDiario || '';
+  private iniciarConfirmacion(segundos: number) {
+    clearInterval(this.cuentaAtras);
+    clearTimeout(this.resetTimeout);
+
+    this.estado            = 'CONFIRMACION';
+    this.segundosRestantes = segundos;
+    this.cdr.detectChanges();
+    this.codigoInput?.nativeElement.focus();
+
+    this.cuentaAtras = setInterval(() => {
+      this.segundosRestantes--;
+      if (this.segundosRestantes <= 0) {
+        // Ventana vencida. No se guardó nada, así que no hay nada que
+        // deshacer: basta volver a la espera.
+        clearInterval(this.cuentaAtras);
+        this.estado         = 'ESPERA';
+        this.ultimoRegistro = null;
+        this.codigoInput?.nativeElement.focus();
+      }
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  /** Corta la confirmación pendiente sin registrar la hora extra. */
+  cancelarConfirmacion() {
+    clearInterval(this.cuentaAtras);
+    this.estado            = 'ESPERA';
+    this.ultimoRegistro    = null;
+    this.segundosRestantes = 0;
+    this.cdr.detectChanges();
+    this.codigoInput?.nativeElement.focus();
+  }
+
+  /**
+   * Clasificación del registro.
+   *
+   * El antiguo campo de estado diario desaparece del DTO: era un String
+   * libre con una nomenclatura distinta de las otras dos que convivían en
+   * el sistema. Ahora la clasificación la lleva 'tipo', sobre el enum
+   * único TipoRegistro, y 'estado' sigue siendo el flujo de trabajo
+   * (MARCADO, CALCULADO, REVISADO…).
+   */
+  private getTipo(registro: any): string {
+    return registro?.tipo || '';
   }
 
   getColorEstado(registro: any): string {
-    switch (this.getEstadoDiario(registro)) {
-      case 'A_TIEMPO':       return '#16a34a';
-      case 'TARDE':          return '#d97706';
-      case 'FALTA':          return '#dc2626';
-      case 'NO_PROGRAMADO':  return '#6366f1';
-      default:               return '#64748b';
+    // Una entrada puntual y una con tardanza comparten tipo PROGRAMADA;
+    // lo que las distingue es minTardanza.
+    if (this.getTipo(registro) === 'PROGRAMADA') {
+      return (registro?.minTardanza ?? 0) > 0 ? '#d97706' : '#16a34a';
     }
+    switch (this.getTipo(registro)) {
+      case 'HORA_EXTRA_NO_PROGRAMADA': return '#7c3aed';
+      case 'NO_PROGRAMADA':            return '#6366f1';
+      case 'CONTINGENCIA':             return '#0891b2';
+      case 'MARCACION_INCOMPLETA':     return '#d97706';
+      case 'FALTA_INJUSTIFICADA':      return '#dc2626';
+      default:                         return '#64748b';
+    }
+  }
+
+  /**
+   * true si el lector espera el segundo escaneo que confirma una entrada
+   * anticipada (HU-22). Sin esto, la pantalla mostraría un mensaje de
+   * éxito cuando en realidad todavía no se ha guardado nada.
+   */
+  requiereConfirmacion(registro: any): boolean {
+    return registro?.requiereConfirmacion === true;
+  }
+
+  /** Mensaje listo para el dispositivo, que ya arma el backend (RNF009). */
+  mensajeRegistro(registro: any): string {
+    return registro?.mensaje || '';
   }
 
   getEtiquetaEstado(registro: any): string {
-    switch (this.getEstadoDiario(registro)) {
-      case 'A_TIEMPO':       return '✓ A TIEMPO';
-      case 'TARDE':          return '⚠ TARDE';
-      case 'FALTA':          return '✗ FALTA';
-      case 'NO_PROGRAMADO':  return 'ℹ NO PROGRAMADO';
-      default:               return '';
+    // Puntual y tardanza comparten tipo PROGRAMADA; los separa minTardanza.
+    if (this.getTipo(registro) === 'PROGRAMADA') {
+      return (registro?.minTardanza ?? 0) > 0
+        ? '\u26a0 TARDE (' + registro.minTardanza + ' min)'
+        : '\u2713 A TIEMPO';
+    }
+    switch (this.getTipo(registro)) {
+      case 'HORA_EXTRA_NO_PROGRAMADA': return '\u23f1 HORA EXTRA';
+      case 'NO_PROGRAMADA':            return '\u2139 NO PROGRAMADA';
+      case 'CONTINGENCIA':             return '\u2139 CONTINGENCIA';
+      case 'MARCACION_INCOMPLETA':     return '\u26a0 INCOMPLETA';
+      case 'FALTA_INJUSTIFICADA':      return '\u2717 FALTA';
+      default:                         return '';
     }
   }
 
-  // true si hay estado diario que mostrar (evita mostrar badge vacío)
+  // true si hay clasificacion que mostrar (evita un badge vacio).
+  // Conserva el nombre para no tocar el HTML que ya lo invoca.
   tieneEstadoDiario(registro: any): boolean {
-    return !!this.getEstadoDiario(registro);
+    return !!this.getTipo(registro);
   }
 }

@@ -225,7 +225,24 @@
       </div>
       <div class="modal-body">
         <p>¿Quitar el grupo <strong>«{{ grupoParaQuitar?.nombre }}»</strong> del esquema <strong>«{{ esquemaParaQuitar?.nombre }}»</strong>?</p>
-        <p class="aviso-quitar">Se eliminarán las {{ getProgramacionesByEsquema(esquemaParaQuitar?.idEsquema).length }} asignaciones de los miembros del grupo para esta semana.</p>
+        <!--
+          Contaba las asignaciones del ESQUEMA COMPLETO, no las del grupo.
+          Con dos grupos en el mismo esquema el número engañaba: decía que
+          se eliminarían seis cuando solo se quitaban tres.
+        -->
+        <p class="aviso-quitar">
+          Se eliminarán las {{ grupoParaQuitar?.programaciones?.length || 0 }}
+          asignaciones de este grupo para esta semana.
+          Los demás grupos del esquema no se tocan.
+        </p>
+
+        @if (grupoParaQuitar?.programaciones?.length) {
+          <ul class="lista-miembros-quitar">
+            @for (p of grupoParaQuitar.programaciones; track p.idProgramacion) {
+              <li>{{ p.trabajadorNombre }}</li>
+            }
+          </ul>
+        }
       </div>
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="mostrarModalEliminarGrupo = false" [disabled]="isProcesando">Cancelar</button>

@@ -68,6 +68,52 @@
         </div>
       }
 
+      <!-- CONFIRMACIÓN POR DOBLE ESCANEO (HU-22) -->
+      <!--
+        El backend pidió el segundo escaneo y TODAVÍA NO HA GUARDADO NADA.
+        Esta pantalla existe justamente para que eso quede claro: antes se
+        mostraba el verde de registro exitoso sobre una jornada sin marcar.
+      -->
+      @if (estado === 'CONFIRMACION' && ultimoRegistro) {
+        <div class="estado-confirmacion">
+
+          <div class="conf-icono">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+
+          <div class="conf-nombre">{{ ultimoRegistro.nombreCompleto }}</div>
+
+          <h2 class="conf-pregunta">¿Vas a realizar horas extra?</h2>
+
+          <p class="conf-detalle">
+            Llegaste antes de tu hora de ingreso
+            @if (ultimoRegistro.ingresoProg) {
+              (programada {{ ultimoRegistro.ingresoProg }})
+            }.
+          </p>
+
+          <div class="conf-instruccion">
+            Vuelve a pasar tu código para confirmar
+          </div>
+
+          <div class="conf-contador" [class.conf-urgente]="segundosRestantes <= 5">
+            {{ segundosRestantes }}
+          </div>
+
+          <p class="conf-aviso">
+            Si no confirmas, no se registrará nada y podrás marcar tu entrada
+            a la hora habitual.
+          </p>
+
+          <button class="conf-cancelar" (click)="cancelarConfirmacion(); $event.stopPropagation()">
+            Cancelar
+          </button>
+        </div>
+      }
+
       <!-- ERROR -->
       @if (estado === 'ERROR') {
         <div class="estado-error">

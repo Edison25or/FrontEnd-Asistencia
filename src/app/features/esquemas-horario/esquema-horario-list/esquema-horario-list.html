@@ -92,7 +92,8 @@
           </table>
 
           <div class="card-footer">
-            <span class="tolerancia-chip">Tolerancia: {{ g.versionActiva?.toleranciaMinutos }} min</span>
+            <span class="tolerancia-chip">{{ g.versionActiva?.turnoNombre }}</span>
+            <span class="tolerancia-chip">Tol. {{ g.versionActiva?.toleranciaTardanza }}/{{ g.versionActiva?.toleranciaPrevia }}/{{ g.versionActiva?.toleranciaPosterior }} min</span>
             <span class="total-bruto">Total bruto: {{ g.versionActiva?.totalHorasBrutas }}</span>
           </div>
         </div>
@@ -103,9 +104,15 @@
 
 
 <!-- ══ MODAL CREAR (v1) ════════════════════════════════════ -->
+<!--
+  Rediseñado a dos columnas. Antes los siete días quedaban en un modal
+  angosto con scroll, de modo que solo se veían cuatro a la vez y había
+  que subir y bajar para comparar. Ahora la semana completa está siempre
+  visible y los ajustes del esquema viven en un lateral estrecho.
+-->
 @if (mostrarModal) {
   <div class="modal-overlay" (click)="cerrarModal()">
-    <div class="modal-box modal-xl" (click)="$event.stopPropagation()">
+    <div class="modal-box modal-esquema" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>Nuevo Esquema de Horario</h3>
         <button class="modal-close" (click)="cerrarModal()">✕</button>
@@ -114,68 +121,134 @@
       <div class="modal-body" [formGroup]="esquemaForm">
         @if (errorModal) { <div class="alert-error">{{ errorModal }}</div> }
 
-        <div class="form-row-3">
-          <div class="form-group span-2">
-            <label>Nombre del esquema <span class="req">*</span></label>
-            <input type="text" formControlName="nombre" placeholder="Ej: Turno Mañana">
-            @if (esquemaForm.get('nombre')?.invalid && esquemaForm.get('nombre')?.touched) {
-              <span class="form-error">Requerido</span>
+        <div class="esquema-layout">
+
+          <!-- ── COLUMNA IZQUIERDA: LA SEMANA ── -->
+          <div>
+            <div class="dias-panel">
+              <table class="dias-table" formArrayName="horariosDia">
+                <thead>
+                  <tr>
+                    <th>Día</th><th>Descanso</th><th>Entrada</th>
+                    <th>Refrigerio (min)</th><th>Horas netas (min)</th>
+                    <th>Extra (min)</th><th>Salida calculada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ctrl of horariosDiaArray.controls; track $index; let i = $index) {
+                    <tr [formGroupName]="i" [class.row-descanso]="ctrl.get('esDescanso')!.value">
+                      <td class="td-dia">{{ getNombreDia(ctrl.get('diaSemana')!.value) }}</td>
+                      <td class="td-check"><input type="checkbox" formControlName="esDescanso"></td>
+                      <td><input type="time"   formControlName="horaEntrada"            class="input-sm"></td>
+                      <td><input type="number" formControlName="minutosRefrigerio"      class="input-sm input-num" min="0" placeholder="60"></td>
+                      <td><input type="number" formControlName="minutosNetos"           class="input-sm input-num" min="0" placeholder="ej: 636"></td>
+                      <td><input type="number" formControlName="minutosExtraProgramado" class="input-sm input-num" min="0" placeholder="0"></td>
+                      <td class="td-salida" [class.td-salida-cruza]="salidaCruzaMedianoche(i, false)">
+                        {{ getHoraSalida(i, false) }}
+                        @if (salidaCruzaMedianoche(i, false)) {
+                          <span class="badge-dia-sig">día sig.</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="total-label">Total semanal</td>
+                    <td class="total-val" [class.total-error]="errorNetosExcedido">{{ formatMin(totalNetos) }}</td>
+                    <td class="total-extra" [class.total-warn]="totalExtra > 180">{{ formatMin(totalExtra) }}</td>
+                    <td class="total-bruto-sm">{{ formatMin(totalBruto) }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            @if (advertenciaNetos) {
+              <div [class]="errorNetosExcedido ? 'alerta-horas-error' : 'alerta-horas-warn'">
+                {{ advertenciaNetos }}
+              </div>
             }
-          </div>
-          <div class="form-group">
-            <label>Tolerancia (min) <span class="req">*</span></label>
-            <input type="number" formControlName="toleranciaMinutos" min="0" max="60">
-          </div>
-        </div>
+            @if (advertenciaExtra) {
+              <div class="alerta-horas-warn">{{ advertenciaExtra }}</div>
+            }
 
-        <div class="form-group">
-          <label>Descripción</label>
-          <input type="text" formControlName="descripcion" placeholder="Descripción opcional">
-        </div>
+            <p class="hint-tabla">
+              Ingresa los minutos netos del día (ej: 11h 36m = 696 min). La hora de
+              salida se calcula sola; si sale marcada como «día sig.», el turno cruza
+              la medianoche y eso es lo esperado en el turno noche.
+            </p>
+          </div>
 
-        <div class="dias-grid-wrapper">
-          <table class="dias-table" formArrayName="horariosDia">
-            <thead>
-              <tr>
-                <th>Día</th><th>Descanso</th><th>Entrada</th>
-                <th>Refrigerio (min)</th><th>Horas netas (min)</th><th>Extra (min)</th><th>Salida calculada</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (ctrl of horariosDiaArray.controls; track $index; let i = $index) {
-                <tr [formGroupName]="i" [class.row-descanso]="ctrl.get('esDescanso')!.value">
-                  <td class="td-dia">{{ getNombreDia(ctrl.get('diaSemana')!.value) }}</td>
-                  <td class="td-check"><input type="checkbox" formControlName="esDescanso"></td>
-                  <td><input type="time"   formControlName="horaEntrada"            class="input-sm"></td>
-                  <td><input type="number" formControlName="minutosRefrigerio"      class="input-sm input-num" min="0" placeholder="60"></td>
-                  <td><input type="number" formControlName="minutosNetos"           class="input-sm input-num" min="0" placeholder="ej: 636"></td>
-                  <td><input type="number" formControlName="minutosExtraProgramado" class="input-sm input-num" min="0" placeholder="0"></td>
-                  <td class="td-salida">{{ getHoraSalida(i, false) }}</td>
-                </tr>
+          <!-- ── COLUMNA DERECHA: AJUSTES ── -->
+          <aside class="esquema-lateral">
+            <p class="lateral-titulo">Identificación</p>
+
+            <div class="tol-campo">
+              <label class="tol-label">Nombre <span class="req">*</span></label>
+              <input type="text" formControlName="nombre" placeholder="Ej: Turno Mañana">
+              @if (esquemaForm.get('nombre')?.invalid && esquemaForm.get('nombre')?.touched) {
+                <span class="form-error">Requerido</span>
               }
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="4" class="total-label">Total semanal</td>
-                <td class="total-val" [class.total-error]="errorNetosExcedido">{{ formatMin(totalNetos) }}</td>
-                <td class="total-extra" [class.total-warn]="totalExtra > 180">{{ formatMin(totalExtra) }}</td>
-                <td class="total-bruto-sm">{{ formatMin(totalBruto) }}</td>
-              </tr>
-            </tfoot>
-          </table>
+            </div>
+
+            <div class="tol-campo">
+              <label class="tol-label">Turno <span class="req">*</span></label>
+              <select formControlName="idTurno" class="select-turno"
+                      [class.campo-invalido]="esquemaForm.get('idTurno')?.invalid && esquemaForm.get('idTurno')?.touched">
+                <option [ngValue]="null">Selecciona…</option>
+                @for (t of turnos; track t.idTurno) {
+                  <option [ngValue]="t.idTurno">{{ t.nombre }}</option>
+                }
+              </select>
+              @if (esquemaForm.get('idTurno')?.invalid && esquemaForm.get('idTurno')?.touched) {
+                <span class="form-error">El turno es obligatorio</span>
+              }
+              <span class="tol-hint">
+                Determina cómo se clasifican las horas en el consolidado.
+              </span>
+            </div>
+
+            <div class="tol-campo">
+              <label class="tol-label">Descripción del horario</label>
+              <input type="text" formControlName="descripcion"
+                     placeholder="Ej: Turno rotativo de planta">
+            </div>
+
+            <!--
+              Tres tolerancias, no una. La previa y la posterior definen la
+              ventana de la jornada, que es lo que permite localizar una
+              marcación sin depender de la fecha calendario (RN-17).
+            -->
+            <p class="lateral-titulo">Tolerancias (min)</p>
+
+            <div class="tol-campo">
+              <div class="tol-fila">
+                <span class="tol-label">Tardanza</span>
+                <input type="number" formControlName="toleranciaTardanza"
+                       class="tol-input" min="0" max="120">
+              </div>
+              <span class="tol-hint">Margen tras la entrada antes de contar tardanza.</span>
+            </div>
+
+            <div class="tol-campo">
+              <div class="tol-fila">
+                <span class="tol-label">Previa</span>
+                <input type="number" formControlName="toleranciaPrevia"
+                       class="tol-input" min="0" max="120">
+              </div>
+              <span class="tol-hint">Llegada anticipada considerada normal. Más allá, el lector pide confirmar hora extra.</span>
+            </div>
+
+            <div class="tol-campo">
+              <div class="tol-fila">
+                <span class="tol-label">Posterior</span>
+                <input type="number" formControlName="toleranciaPosterior"
+                       class="tol-input" min="0" max="120">
+              </div>
+              <span class="tol-hint">Permanencia tras la salida considerada normal.</span>
+            </div>
+          </aside>
         </div>
-
-        <!-- Advertencias de horas -->
-        @if (advertenciaNetos) {
-          <div [class]="errorNetosExcedido ? 'alerta-horas-error' : 'alerta-horas-warn'">
-            {{ advertenciaNetos }}
-          </div>
-        }
-        @if (advertenciaExtra) {
-          <div class="alerta-horas-warn">{{ advertenciaExtra }}</div>
-        }
-
-        <p class="hint-tabla">💡 Ingresa los minutos netos del día (ej: 11h 36m = 696 min). La hora de salida se calcula automáticamente.</p>
       </div>
 
       <div class="modal-footer">
@@ -190,9 +263,10 @@
 
 
 <!-- ══ MODAL NUEVA VERSIÓN ═════════════════════════════════ -->
+<!-- Mismo diseño de dos columnas que el modal de creación. -->
 @if (mostrarModalVersion && grupoParaNuevaVersion && versionForm) {
   <div class="modal-overlay" (click)="cerrarModalVersion()">
-    <div class="modal-box modal-xl" (click)="$event.stopPropagation()">
+    <div class="modal-box modal-esquema" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
           <h3>Nueva versión — {{ grupoParaNuevaVersion.grupoNombre }}</h3>
@@ -211,66 +285,118 @@
       <div class="modal-body" [formGroup]="versionForm">
         @if (errorModal) { <div class="alert-error">{{ errorModal }}</div> }
 
-        <div class="form-row-3">
-          <div class="form-group">
-            <label>Vigente desde <span class="req">*</span></label>
-            <input type="date" formControlName="vigenteDesde">
-            @if (versionForm.get('vigenteDesde')?.invalid && versionForm.get('vigenteDesde')?.touched) {
-              <span class="form-error">La fecha es obligatoria</span>
+        <div class="esquema-layout">
+
+          <!-- ── COLUMNA IZQUIERDA: LA SEMANA ── -->
+          <div>
+            <div class="dias-panel">
+              <table class="dias-table" formArrayName="horariosDia">
+                <thead>
+                  <tr>
+                    <th>Día</th><th>Descanso</th><th>Entrada</th>
+                    <th>Refrigerio (min)</th><th>Horas netas (min)</th>
+                    <th>Extra (min)</th><th>Salida calculada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ctrl of horariosDiaVersionArray.controls; track $index; let i = $index) {
+                    <tr [formGroupName]="i" [class.row-descanso]="ctrl.get('esDescanso')!.value">
+                      <td class="td-dia">{{ getNombreDia(ctrl.get('diaSemana')!.value) }}</td>
+                      <td class="td-check"><input type="checkbox" formControlName="esDescanso"></td>
+                      <td><input type="time"   formControlName="horaEntrada"            class="input-sm"></td>
+                      <td><input type="number" formControlName="minutosRefrigerio"      class="input-sm input-num" min="0"></td>
+                      <td><input type="number" formControlName="minutosNetos"           class="input-sm input-num" min="0"></td>
+                      <td><input type="number" formControlName="minutosExtraProgramado" class="input-sm input-num" min="0"></td>
+                      <td class="td-salida" [class.td-salida-cruza]="salidaCruzaMedianoche(i, true)">
+                        {{ getHoraSalida(i, true) }}
+                        @if (salidaCruzaMedianoche(i, true)) {
+                          <span class="badge-dia-sig">día sig.</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="total-label">Total semanal</td>
+                    <td class="total-val" [class.total-error]="errorNetosExcedido">{{ formatMin(totalNetosV) }}</td>
+                    <td class="total-extra" [class.total-warn]="totalExtraV > 180">{{ formatMin(totalExtraV) }}</td>
+                    <td class="total-bruto-sm">{{ formatMin(totalBrutoV) }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            @if (advertenciaNetos) {
+              <div [class]="errorNetosExcedido ? 'alerta-horas-error' : 'alerta-horas-warn'">
+                {{ advertenciaNetos }}
+              </div>
             }
-          </div>
-          <div class="form-group">
-            <label>Tolerancia (min)</label>
-            <input type="number" formControlName="toleranciaMinutos" min="0" max="60">
-          </div>
-          <div class="form-group">
-            <label>Descripción</label>
-            <input type="text" formControlName="descripcion">
-          </div>
-        </div>
+            @if (advertenciaExtra) {
+              <div class="alerta-horas-warn">{{ advertenciaExtra }}</div>
+            }
 
-        <div class="dias-grid-wrapper">
-          <table class="dias-table" formArrayName="horariosDia">
-            <thead>
-              <tr>
-                <th>Día</th><th>Descanso</th><th>Entrada</th>
-                <th>Refrigerio (min)</th><th>Horas netas (min)</th><th>Extra (min)</th><th>Salida calculada</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (ctrl of horariosDiaVersionArray.controls; track $index; let i = $index) {
-                <tr [formGroupName]="i" [class.row-descanso]="ctrl.get('esDescanso')!.value">
-                  <td class="td-dia">{{ getNombreDia(ctrl.get('diaSemana')!.value) }}</td>
-                  <td class="td-check"><input type="checkbox" formControlName="esDescanso"></td>
-                  <td><input type="time"   formControlName="horaEntrada"            class="input-sm"></td>
-                  <td><input type="number" formControlName="minutosRefrigerio"      class="input-sm input-num" min="0"></td>
-                  <td><input type="number" formControlName="minutosNetos"           class="input-sm input-num" min="0"></td>
-                  <td><input type="number" formControlName="minutosExtraProgramado" class="input-sm input-num" min="0"></td>
-                  <td class="td-salida">{{ getHoraSalida(i, true) }}</td>
-                </tr>
+            <p class="hint-tabla">
+              Modifica solo los días que cambian. El resto viene pre-rellenado de la
+              versión actual.
+            </p>
+          </div>
+
+          <!-- ── COLUMNA DERECHA: AJUSTES ── -->
+          <aside class="esquema-lateral">
+            <p class="lateral-titulo">Vigencia</p>
+
+            <div class="tol-campo">
+              <label class="tol-label">Vigente desde <span class="req">*</span></label>
+              <input type="date" formControlName="vigenteDesde">
+              @if (versionForm.get('vigenteDesde')?.invalid && versionForm.get('vigenteDesde')?.touched) {
+                <span class="form-error">La fecha es obligatoria</span>
               }
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="4" class="total-label">Total semanal</td>
-                <td class="total-val" [class.total-error]="errorNetosExcedido">{{ formatMin(totalNetosV) }}</td>
-                <td class="total-extra" [class.total-warn]="totalExtraV > 180">{{ formatMin(totalExtraV) }}</td>
-                <td class="total-bruto-sm">{{ formatMin(totalBrutoV) }}</td>
-              </tr>
-            </tfoot>
-          </table>
+              <span class="tol-hint">
+                Debe ser posterior al inicio de la versión actual.
+              </span>
+            </div>
+
+            <div class="tol-campo">
+              <label class="tol-label">Turno <span class="req">*</span></label>
+              <select formControlName="idTurno" class="select-turno">
+                <option [ngValue]="null">Selecciona…</option>
+                @for (t of turnos; track t.idTurno) {
+                  <option [ngValue]="t.idTurno">{{ t.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="tol-campo">
+              <label class="tol-label">Descripción del horario</label>
+              <input type="text" formControlName="descripcion"
+                     placeholder="Ej: Turno rotativo de planta">
+            </div>
+
+            <p class="lateral-titulo">Tolerancias (min)</p>
+
+            <div class="tol-campo">
+              <div class="tol-fila">
+                <span class="tol-label">Tardanza</span>
+                <input type="number" formControlName="toleranciaTardanza" class="tol-input" min="0" max="120">
+              </div>
+            </div>
+
+            <div class="tol-campo">
+              <div class="tol-fila">
+                <span class="tol-label">Previa</span>
+                <input type="number" formControlName="toleranciaPrevia" class="tol-input" min="0" max="120">
+              </div>
+            </div>
+
+            <div class="tol-campo">
+              <div class="tol-fila">
+                <span class="tol-label">Posterior</span>
+                <input type="number" formControlName="toleranciaPosterior" class="tol-input" min="0" max="120">
+              </div>
+            </div>
+          </aside>
         </div>
-
-        @if (advertenciaNetos) {
-          <div [class]="errorNetosExcedido ? 'alerta-horas-error' : 'alerta-horas-warn'">
-            {{ advertenciaNetos }}
-          </div>
-        }
-        @if (advertenciaExtra) {
-          <div class="alerta-horas-warn">{{ advertenciaExtra }}</div>
-        }
-
-        <p class="hint-tabla">💡 Modifica solo los días que cambian. El resto viene pre-rellenado de la versión actual.</p>
       </div>
 
       <div class="modal-footer">
@@ -311,7 +437,7 @@
                   @else { → presente }
                 </span>
                 <span class="v-resumen">
-                  Neto {{ v.totalHorasNetas }} · Tol. {{ v.toleranciaMinutos }}'
+                  Neto {{ v.totalHorasNetas }} · {{ v.turnoNombre }}'
                 </span>
               </div>
               <svg class="chevron" [class.chevron-open]="versionesExpandidas.has(v.idEsquema)"
@@ -349,7 +475,8 @@
                   </tfoot>
                 </table>
                 <div class="detalle-footer">
-                  <span class="tolerancia-chip">Tolerancia: {{ v.toleranciaMinutos }} min</span>
+                  <span class="tolerancia-chip">{{ v.turnoNombre }}</span>
+                  <span class="tolerancia-chip">Tol. {{ v.toleranciaTardanza }}/{{ v.toleranciaPrevia }}/{{ v.toleranciaPosterior }} min</span>
                 </div>
               </div>
             }
