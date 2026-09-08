@@ -12,39 +12,49 @@
       <p class="rev-subtitulo">Valida los tiempos fuera de programación y cierra la quincena</p>
     </div>
 
-    <div class="q-chips">
-      @if (isLoadingQ) { <span class="pq-empty">Cargando...</span> }
+    <!--
+      Desplegable y no píldoras. Con dos quincenas las píldoras se leían
+      bien; con diez ocupaban tres filas y empujaban la tabla fuera de la
+      pantalla. El desplegable mantiene la altura fija sin importar
+      cuántos períodos existan.
+    -->
+    <div class="q-selector">
+      <label class="q-label" for="selQuincena">Quincena</label>
 
-      @for (q of quincenas; track q.idQuincena) {
-        <button class="q-chip"
-                [class.q-chip-activa]="quincenaActual?.idQuincena === q.idQuincena"
-                [class.q-chip-cerrada]="q.estado === 'CERRADA'"
-                (click)="seleccionarQuincena(q)"
-                [title]="q.descripcion + ' · ' + (q.inicio | fechaPe) + ' a ' + (q.fin | fechaPe) + ' · ' + q.estado">
-          <!--
-            Dos líneas, para igualar el alto del bloque de título y usar
-            ese espacio en vez de dejarlo en blanco. La segunda recupera
-            el rango de fechas, que antes solo estaba en el tooltip.
-          -->
-          <span class="q-chip-linea1">
-            <span class="q-chip-desc">{{ q.descripcion }}</span>
-            @if (q.estado === 'CERRADA') {
-              <span class="q-chip-lock" title="Quincena cerrada">🔒</span>
-            }
-            @if (q.pendientesRevision > 0) {
-              <span class="q-chip-pend">{{ q.pendientesRevision }}</span>
-            }
-          </span>
-          <span class="q-chip-rango">
-            {{ q.inicio | fechaPe }} → {{ q.fin | fechaPe }}
-          </span>
-        </button>
-      } @empty {
-        @if (!isLoadingQ) {
-          <span class="pq-empty">Sin quincenas. Se crean al confirmar la programación semanal.</span>
+      <select id="selQuincena" class="q-select"
+              [ngModel]="quincenaActual?.idQuincena"
+              (ngModelChange)="seleccionarPorId($event)"
+              [disabled]="isLoadingQ || quincenas.length === 0">
+        @if (isLoadingQ) {
+          <option [ngValue]="null">Cargando…</option>
+        } @else if (quincenas.length === 0) {
+          <option [ngValue]="null">Sin quincenas</option>
+        }
+        @for (q of quincenas; track q.idQuincena) {
+          <option [ngValue]="q.idQuincena">
+            {{ q.descripcion }}
+            ({{ q.inicio | fechaPe }} - {{ q.fin | fechaPe }})
+            {{ q.estado === 'CERRADA' ? ' · cerrada' : '' }}
+            {{ q.pendientesRevision > 0 ? ' · ' + q.pendientesRevision + ' pend.' : '' }}
+          </option>
+        }
+      </select>
+
+      <!-- Estado de la quincena elegida, fuera del desplegable para que se
+           vea sin desplegarlo. -->
+      @if (quincenaActual) {
+        <span class="q-estado" [class.q-estado-cerrada]="quincenaActual.estado === 'CERRADA'">
+          {{ quincenaActual.estado }}
+        </span>
+        @if (quincenaActual.pendientesRevision > 0) {
+          <span class="q-pend">{{ quincenaActual.pendientesRevision }} pendiente(s)</span>
         }
       }
+      @if (!isLoadingQ && quincenas.length === 0) {
+        <span class="pq-empty">Se crean al confirmar la programación semanal.</span>
+      }
     </div>
+
 
     <div class="rev-acciones">
       <button class="btn-cierre-diario" (click)="mostrarModalQ = true"
@@ -55,7 +65,7 @@
       @if (quincenaActual) {
         <button class="btn-np" (click)="abrirModalNP()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          No programada
+          Registro manual
         </button>
       }
     </div>
@@ -88,7 +98,19 @@
             {{ quincenaActual.inicio | fechaPe }} → {{ quincenaActual.fin | fechaPe }}
           </span>
           <span class="cnt cnt-verde">{{ totalRevisados }} revisados</span>
-          <span class="cnt cnt-naranja">{{ totalPendientes }} pendientes</span>
+          <!--
+            Se separan porque no son lo mismo: los bloqueantes impiden
+            cerrar la quincena, las faltas sin confirmar no. Un solo
+            número mezclaría dos situaciones con salidas distintas.
+          -->
+          <span class="cnt cnt-naranja" *ngIf="totalBloqueantes > 0"
+                title="Impiden generar el consolidado hasta resolverse">
+            {{ totalBloqueantes }} bloquean el cierre
+          </span>
+          <span class="cnt cnt-rojo" *ngIf="totalFaltasSinConfirmar > 0"
+                title="Las generó el cierre diario. No bloquean, pero conviene confirmarlas.">
+            {{ totalFaltasSinConfirmar }} falta(s) sin confirmar
+          </span>
           <input type="text" [(ngModel)]="filtroNombre" placeholder="Buscar trabajador..."
                  class="filtro-input filtro-wide">
           <select [(ngModel)]="filtroEstado" class="filtro-select">
@@ -110,7 +132,7 @@
           -->
           <label class="filtro-check" [class.filtro-check-on]="soloPendientesRevision">
             <input type="checkbox" [(ngModel)]="soloPendientesRevision">
-            Solo pendientes de revisión
+            Solo lo que requiere atención
           </label>
           <button class="btn-limpiar"
                   (click)="filtroNombre='';filtroEstado='';filtroTipo='';soloPendientesRevision=false">✕</button>
@@ -194,7 +216,12 @@
                       <span class="estado-badge" [ngClass]="estadoBadge(a.estado)">{{ a.estado }}</span>
                       @if (a.requiereRevision) {
                         <span class="chip-revision" title="Bloquea el cierre de la quincena">
-                          requiere revisión
+                          bloquea el cierre
+                        </span>
+                      } @else if (requiereAtencion(a)) {
+                        <span class="chip-sinconfirmar"
+                              title="La generó el cierre diario. No bloquea, pero conviene confirmarla.">
+                          sin confirmar
                         </span>
                       }
                       <!--
@@ -212,12 +239,12 @@
                     </td>
 
                     <td class="td-center td-hora td-rango">
-                      {{ a.ingresoProg ?? '—' }}<span class="rango-sep">→</span>{{ a.salidaProg ?? '—' }}
+                      {{ a.ingresoProg ?? '-' }}<span class="rango-sep">→</span>{{ a.salidaProg ?? '-' }}
                     </td>
                     <td class="td-center td-hora td-real td-rango">
                       @if (a.ingresoReal || a.salidaReal) {
-                        {{ a.ingresoReal ?? '—' }}<span class="rango-sep">→</span>{{ a.salidaReal ?? '—' }}
-                      } @else { <span class="td-null">—</span> }
+                        {{ a.ingresoReal ?? '-' }}<span class="rango-sep">→</span>{{ a.salidaReal ?? '-' }}
+                      } @else { <span class="td-null">-</span> }
                     </td>
 
                     <!--
@@ -241,14 +268,14 @@
                         </span>
                       }
                       @if (!a.minPrevIngProg && !a.minPostSalProg) {
-                        <span class="td-null">—</span>
+                        <span class="td-null">-</span>
                       }
                     </td>
 
                     <td class="td-center">
                       @if (a.minTardanza > 0) {
                         <span class="tardanza-pill">{{ formatMin(a.minTardanza) }}</span>
-                      } @else { <span class="td-null">—</span> }
+                      } @else { <span class="td-null">-</span> }
                     </td>
 
                     <td class="td-center td-totales">
@@ -262,7 +289,7 @@
                         (RN-18, RN-25). Se muestra el nombre del turno.
                       -->
                       <span [title]="a.turnoNombre || 'Sin turno asignado'">
-                        {{ a.turnoNombre || '—' }}
+                        {{ a.turnoNombre || '-' }}
                       </span>
                       @if (a.minutosFeriado > 0) {
                         <div class="min-feriado"
@@ -284,7 +311,24 @@
                   </tr>
                 } @empty {
                   <tr><td colspan="11" class="tabla-vacio">
-                    No hay asistencias para esta quincena con los filtros seleccionados.
+                    <!--
+                      Con el filtro de pendientes activado por defecto, la
+                      tabla vacía es el caso frecuente y significa algo
+                      bueno. Decir solo "no hay registros" haría dudar de
+                      si la pantalla cargó bien.
+                    -->
+                    @if (soloPendientesRevision && !filtroNombre && !filtroEstado && !filtroTipo) {
+                      <span class="vacio-ok">
+                        No queda nada por atender en esta quincena.
+                      </span>
+                      <span class="vacio-detalle">
+                        El período está listo para consolidar. Desmarca
+                        <strong>Solo lo que requiere atención</strong> para ver todas
+                        las jornadas.
+                      </span>
+                    } @else {
+                      No hay asistencias para esta quincena con los filtros seleccionados.
+                    }
                   </td></tr>
                 }
               </tbody>
@@ -370,7 +414,7 @@
       <div class="modal-header">
         <div>
           <h3>Revisar asistencia</h3>
-          <span class="modal-sub">{{ asistenciaVal.nombreCompleto }} — {{ asistenciaVal.fecha | fechaPe }}</span>
+          <span class="modal-sub">{{ asistenciaVal.nombreCompleto }} - {{ asistenciaVal.fecha | fechaPe }}</span>
         </div>
         <button class="modal-close" (click)="mostrarModalVal=false">✕</button>
       </div>
@@ -416,20 +460,20 @@
         <div class="resumen-dia">
           <div class="rd-item">
             <span class="rd-label">Ingreso prog.</span>
-            <span class="rd-val">{{ asistenciaVal.ingresoProg ?? '—' }}</span>
+            <span class="rd-val">{{ asistenciaVal.ingresoProg ?? '-' }}</span>
           </div>
           <div class="rd-item">
             <span class="rd-label">Salida prog.</span>
-            <span class="rd-val">{{ asistenciaVal.salidaProg ?? '—' }}</span>
+            <span class="rd-val">{{ asistenciaVal.salidaProg ?? '-' }}</span>
           </div>
           <div class="rd-sep">|</div>
           <div class="rd-item">
             <span class="rd-label">Ingreso real</span>
-            <span class="rd-val rd-real">{{ asistenciaVal.ingresoReal ?? '—' }}</span>
+            <span class="rd-val rd-real">{{ asistenciaVal.ingresoReal ?? '-' }}</span>
           </div>
           <div class="rd-item">
             <span class="rd-label">Salida real</span>
-            <span class="rd-val rd-real">{{ asistenciaVal.salidaReal ?? '—' }}</span>
+            <span class="rd-val rd-real">{{ asistenciaVal.salidaReal ?? '-' }}</span>
           </div>
           <div class="rd-sep">|</div>
           <div class="rd-item">
@@ -441,6 +485,57 @@
             <span class="rd-val rd-tardanza">{{ formatMin(asistenciaVal.minTardanza) }}</span>
           </div>
         </div>
+
+        <!--
+          El cuerpo del modal depende del tipo de registro.
+
+          Una falta injustificada no admite validación de horas extra: no
+          hubo marcación, así que los campos de tiempo previo y posterior
+          salen vacíos y no hay minutos que aprobar. Presentarlos ahí
+          pedía una decisión sobre algo que no existe.
+        -->
+        @if (esFalta(asistenciaVal)) {
+
+          <div class="falta-explica">
+            <div class="fe-titulo">Por qué figura como falta injustificada</div>
+            <p>
+              La jornada programada del
+              <strong>{{ asistenciaVal.fecha | fechaPe }}</strong> venció sin
+              marcación de entrada y sin permiso, falta justificada ni feriado
+              que la cubriera. El cierre diario la registró como falta.
+            </p>
+
+            <div class="fe-titulo">Si la falta es correcta</div>
+            <p>
+              No hace falta hacer nada. Puedes confirmarla para dejar constancia
+              de que la revisaste, pero es opcional: el consolidado ya la trata
+              bien y no impide cerrar la quincena.
+            </p>
+
+            <div class="fe-titulo">Si la falta está equivocada</div>
+            <p>Corrígela desde donde corresponde y el sistema la ajusta solo:</p>
+            <ul class="fe-acciones">
+              <li>
+                <strong>El trabajador tenía permiso o justificación.</strong>
+                Regístralo en <em>Permisos y Faltas</em>. Al guardarlo, las
+                jornadas del rango dejan de contar como falta.
+              </li>
+              <li>
+                <strong>Sí vino pero el lector falló.</strong>
+                Usa <em>Registro manual</em> en esta misma pantalla para
+                registrar la marcación real. Si ese día tenía jornada
+                programada, el registro la completa en lugar de crear otra.
+              </li>
+            </ul>
+          </div>
+
+          <div class="form-group">
+            <label>Observación <span class="opcional">(opcional)</span></label>
+            <input type="text" class="input-field" [(ngModel)]="valObservacion"
+                   placeholder="Por ejemplo: verificado con el supervisor de turno">
+          </div>
+
+        } @else {
 
         <!-- Tiempos no programados -->
         <div class="tnp-seccion">
@@ -454,7 +549,7 @@
                 {{ formatMin(asistenciaVal.minPrevIngProg) }}
               </span>
               <span class="tnp-hint">
-                ({{ asistenciaVal.ingresoReal }} – {{ asistenciaVal.ingresoProg }})
+                ({{ asistenciaVal.ingresoReal }} - {{ asistenciaVal.ingresoProg }})
               </span>
             </div>
             <div class="tnp-control">
@@ -481,7 +576,7 @@
                 {{ formatMin(asistenciaVal.minPostSalProg) }}
               </span>
               <span class="tnp-hint">
-                ({{ asistenciaVal.salidaProg }} – {{ asistenciaVal.salidaReal }})
+                ({{ asistenciaVal.salidaProg }} - {{ asistenciaVal.salidaReal }})
               </span>
             </div>
             <div class="tnp-control">
@@ -528,6 +623,8 @@
           <textarea [(ngModel)]="valObservacion" class="input-area"
                     rows="2" placeholder="Notas del supervisor..."></textarea>
         </div>
+        }
+
 
         <!-- Horas totales estimadas -->
         <div class="horas-preview">
@@ -540,9 +637,15 @@
       </div>
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="mostrarModalVal=false" [disabled]="isProcesando">Cancelar</button>
-        <button class="btn-guardar" (click)="guardarValidacion()" [disabled]="isProcesando">
-          {{ isProcesando ? 'Guardando...' : 'Guardar revisión' }}
-        </button>
+        @if (esFalta(asistenciaVal)) {
+          <button class="btn-guardar" (click)="confirmarRevision()" [disabled]="isProcesando">
+            {{ isProcesando ? 'Guardando...' : 'Confirmar que la revisé' }}
+          </button>
+        } @else {
+          <button class="btn-guardar" (click)="guardarValidacion()" [disabled]="isProcesando">
+            {{ isProcesando ? 'Guardando...' : 'Guardar revisión' }}
+          </button>
+        }
       </div>
     </div>
   </div>
@@ -555,18 +658,62 @@
     <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3>Asistencia no programada</h3>
-          <span class="modal-sub">Trabajo extraordinario o fuera de turno</span>
+          <h3>Registro manual de marcación</h3>
+          <span class="modal-sub">
+            Contingencia del lector o trabajo fuera de turno
+          </span>
         </div>
         <button class="modal-close" (click)="mostrarModalNP=false">✕</button>
       </div>
       <div class="modal-body">
         @if (errorNP) { <div class="alerta-error">{{ errorNP }}</div> }
 
+        <!--
+          Selector por nombre y no por identificador numérico. Nadie
+          conoce de memoria el número interno de un trabajador, y pedirlo
+          obligaba a salir a buscarlo a otra pantalla.
+        -->
         <div class="form-group">
-          <label>ID Trabajador <span class="req">*</span></label>
-          <input type="number" [(ngModel)]="npIdTrabajador" class="input-field"
-                 placeholder="ID numérico del trabajador">
+          <label>Trabajador <span class="req">*</span></label>
+
+          @if (npTrabajadorSel) {
+            <div class="trab-elegido">
+              <span>
+                <strong>{{ npTrabajadorSel.nombreCompleto }}</strong>
+                <em>{{ npTrabajadorSel.nroDocumento }} · {{ npTrabajadorSel.areaNombre }}</em>
+              </span>
+              <button type="button" class="btn-quitar" (click)="limpiarTrabajadorNP()">✕</button>
+            </div>
+          } @else {
+            <input type="text" class="input-field" [(ngModel)]="npBusqueda"
+                   (ngModelChange)="buscarTrabajadorNP()"
+                   placeholder="Escribe el nombre o el documento…"
+                   autocomplete="off">
+
+            @if (npBusqueda.length >= 2) {
+              <div class="lista-sugerencias">
+                @for (t of npSugerencias; track t.idTrabajador) {
+                  <button type="button" class="sugerencia"
+                          (click)="seleccionarTrabajadorNP(t)">
+                    <strong>{{ t.nombreCompleto }}</strong>
+                    <em>{{ t.nroDocumento }} · {{ t.puestoNombre }}</em>
+                  </button>
+                } @empty {
+                  <div class="sin-resultados">Ningún trabajador activo coincide.</div>
+                }
+              </div>
+            }
+          }
+        </div>
+
+        <!--
+          Aviso del caso más frecuente: si ese día ya había jornada
+          programada, el registro la completa en lugar de crear otra fila.
+          Sin decirlo, el usuario podría temer estar duplicando el día.
+        -->
+        <div class="aviso-np">
+          Si el trabajador tenía jornada programada ese día, este registro la
+          completa. Si no la tenía, se crea como trabajo fuera de turno.
         </div>
         <div class="form-row-2">
           <div class="form-group">

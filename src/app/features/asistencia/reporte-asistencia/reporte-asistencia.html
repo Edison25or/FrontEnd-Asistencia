@@ -51,15 +51,23 @@
         <input type="date" [(ngModel)]="fechaFin">
       </div>
 
-      <!-- Área -->
+      <!--
+        Área. El Jefe queda acotado a la suya (RN-01), así que en lugar
+        del selector se le muestra cuál es: elegir otra no cambiaría el
+        resultado, porque el servidor descarta el valor recibido.
+      -->
       <div class="form-group">
         <label>Área</label>
-        <select [(ngModel)]="idArea">
-          <option [ngValue]="null">Todas las áreas</option>
-          @for (a of areas; track a.idArea) {
-            <option [ngValue]="a.idArea">{{ a.area }}</option>
-          }
-        </select>
+        @if (!restringidoASuArea()) {
+          <select [(ngModel)]="idArea">
+            <option [ngValue]="null">Todas las áreas</option>
+            @for (a of areas; track a.idArea) {
+              <option [ngValue]="a.idArea">{{ a.area }}</option>
+            }
+          </select>
+        } @else {
+          <div class="area-fija">{{ areaPropia || 'Tu área' }}</div>
+        }
       </div>
 
       <!-- Trabajador con autocomplete -->
@@ -81,10 +89,19 @@
             @for (t of trabajadoresFiltrados | slice:0:8; track t.idTrabajador) {
               <div class="trab-option" (click)="seleccionarTrabajador(t)">
                 <span class="trab-nombre">{{ t.nombreCompleto }}</span>
-                <span class="trab-dni">{{ t.nroDocumento }}</span>
+                <span class="trab-dni" *ngIf="t.nroDocumento">{{ t.nroDocumento }}</span>
               </div>
             }
           </div>
+        }
+
+        <!--
+          Aviso cuando lo escrito no identifica a nadie. Sin él, la
+          consulta se hacía sobre todo el personal y el usuario creía
+          estar filtrando por la persona que escribió.
+        -->
+        @if (avisoTrabajador) {
+          <span class="aviso-trab">{{ avisoTrabajador }}</span>
         }
       </div>
     </div>
@@ -158,15 +175,15 @@
                 <td class="doc-cell">{{ r.nroDocumento }}</td>
                 <td>{{ r.areaNombre }}</td>
                 <td>{{ r.puestoNombre }}</td>
-                <td class="hora-cell">{{ r.horaEntrada ?? '—' }}</td>
-                <td class="hora-cell">{{ r.horaSalida  ?? '—' }}</td>
+                <td class="hora-cell">{{ r.horaEntrada ?? '-' }}</td>
+                <td class="hora-cell">{{ r.horaSalida  ?? '-' }}</td>
                 <td class="hora-cell">{{ minutosAHoras(r.minutosLaborados) }}</td>
                 <td>
                   <span class="estado-badge" [ngClass]="estadoClass(r)">
                     {{ etiquetaEstado(r) }}
                   </span>
                 </td>
-                <td class="obs-cell" [title]="r.observacion">{{ r.observacion || '—' }}</td>
+                <td class="obs-cell" [title]="r.observacion">{{ r.observacion || '-' }}</td>
               </tr>
             } @empty {
               <tr>

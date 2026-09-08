@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 /** Resumen de una corrida del cierre diario (CU29). */
@@ -73,6 +73,22 @@ export class RevisionAsistenciaService {
     motivo:       string;
   }): Observable<any> {
     return this.http.patch<any>(`${this.base}/corregir-marcacion`, payload);
+  }
+
+  /**
+   * Acuse de revisión, sin alterar valores calculados.
+   *
+   * Para las jornadas que resolvió el proceso automático, sobre todo las
+   * faltas injustificadas. Esas no admiten validación de horas extra
+   * porque no hubo marcación, y usar validarTiempos() sobre ellas
+   * registraría una decisión sobre minutos que no existen.
+   */
+  confirmarRevision(idAsistencia: number, observacion?: string): Observable<any> {
+    const params = observacion?.trim()
+      ? new HttpParams().set('observacion', observacion.trim())
+      : undefined;
+    return this.http.patch<any>(
+      `${this.base}/confirmar-revision/${idAsistencia}`, {}, { params });
   }
 
   /** Registro manual por contingencia (CU19). */

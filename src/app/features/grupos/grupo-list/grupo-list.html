@@ -16,7 +16,7 @@
   @if (esSoloSupervisor()) {
     <div class="aviso-readonly">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Modo solo lectura — solo Administradores y SuperAdmins pueden modificar grupos.
+      Modo solo lectura - solo Administradores y SuperAdmins pueden modificar grupos.
     </div>
   }
 
@@ -102,7 +102,7 @@
         <form [formGroup]="grupoForm" class="form-datos">
           <div class="form-group">
             <label>Nombre <span class="req">*</span></label>
-            <input type="text" formControlName="nombre" placeholder="Ej: Grupo A — Turno Día" maxlength="50">
+            <input type="text" formControlName="nombre" placeholder="Ej: Grupo A - Turno Día" maxlength="50">
             @if (grupoForm.get('nombre')?.invalid && grupoForm.get('nombre')?.touched) {
               <span class="form-error">El nombre es obligatorio</span>
             }
@@ -162,7 +162,7 @@
                   <div class="item-avatar">{{ t.nombreCompleto?.charAt(0) }}</div>
                   <div class="item-info">
                     <span class="item-nombre">{{ t.nombreCompleto }}</span>
-                    <span class="item-puesto">{{ t.puestoNombre }} — {{ t.areaNombre }}</span>
+                    <span class="item-puesto">{{ t.puestoNombre }} - {{ t.areaNombre }}</span>
                   </div>
                   <span class="item-accion item-accion-add" title="Agregar al grupo">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -170,8 +170,19 @@
                 </div>
               } @empty {
                 <div class="panel-vacio">
-                  @if (terminoBusqueda) { Sin resultados para "{{ terminoBusqueda }}"
-                  } @else { Todos los trabajadores libres ya están en el grupo. }
+                  <!--
+                    El mensaje distingue las tres razones por las que el
+                    panel puede estar vacío. Un texto único dejaba al
+                    usuario sin saber si debía elegir área, cambiar la
+                    búsqueda o si no quedaba nadie libre.
+                  -->
+                  @if (!grupoForm.get('idArea')?.value) {
+                    Elige un área para ver a su personal disponible.
+                  } @else if (terminoBusqueda) {
+                    Sin resultados para "{{ terminoBusqueda }}"
+                  } @else {
+                    Todos los trabajadores de esta área ya pertenecen a un grupo.
+                  }
                 </div>
               }
             </div>
@@ -208,7 +219,7 @@
                   <div class="item-avatar avatar-sel">{{ t.nombreCompleto?.charAt(0) }}</div>
                   <div class="item-info">
                     <span class="item-nombre">{{ t.nombreCompleto }}</span>
-                    <span class="item-puesto">{{ t.puestoNombre }} — {{ t.areaNombre }}</span>
+                    <span class="item-puesto">{{ t.puestoNombre }} - {{ t.areaNombre }}</span>
                   </div>
                 </div>
               } @empty {
@@ -264,7 +275,7 @@
               <div class="miembro-avatar">{{ t.nombreCompleto?.charAt(0) }}</div>
               <div class="miembro-info">
                 <span class="miembro-nombre">{{ t.nombreCompleto }}</span>
-                <span class="miembro-puesto">{{ t.puestoNombre }} — {{ t.areaNombre }}</span>
+                <span class="miembro-puesto">{{ t.puestoNombre }} - {{ t.areaNombre }}</span>
               </div>
               <span class="miembro-doc">{{ t.nroDocumento }}</span>
             </div>

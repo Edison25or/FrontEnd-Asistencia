@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Observable, forkJoin, of } from 'rxjs';
@@ -14,10 +15,10 @@ import { CatalogoService, CatalogoSimple } from '../../core/services/catalogo.se
  * ============================================================
  * Tres catálogos que antes no tenían pantalla:
  *
- *   Turnos (RN-18)             — reemplaza la clasificación por umbral
+ *   Turnos (RN-18)             - reemplaza la clasificación por umbral
  *                                horario fijo del prototipo.
- *   Tipos de Ausencia (RN-16)  — común a permisos y faltas justificadas.
- *   Motivos de Cese (RN-11)    — reemplaza el texto libre del cese.
+ *   Tipos de Ausencia (RN-16)  - común a permisos y faltas justificadas.
+ *   Motivos de Cese (RN-11)    - reemplaza el texto libre del cese.
  *
  * ============================================================
  * POR QUE ESTOS TRES NO SE EDITAN NI SE REACTIVAN
@@ -106,9 +107,19 @@ export class MaestrosComponent implements OnInit {
     horaFin:    ['']
   });
 
+  /**
+   * Los dos indicadores clasifican el tipo según se planifique o no.
+   *
+   * Nacen marcados porque la mayoría de los tipos admiten ambas
+   * situaciones: una operación programada es un permiso por descanso
+   * médico y la misma dolencia súbita es una falta justificada. Quien
+   * crea el tipo desmarca la que no corresponda.
+   */
   tipoAusenciaForm: FormGroup = this.fb.group({
-    nombre:      ['', [Validators.required, Validators.maxLength(80)]],
-    descripcion: ['', Validators.maxLength(200)]
+    nombre:                  ['', [Validators.required, Validators.maxLength(80)]],
+    descripcion:             ['', Validators.maxLength(200)],
+    aplicaPermiso:           [true],
+    aplicaFaltaJustificada:  [true]
   });
 
   motivoCeseForm: FormGroup = this.fb.group({
@@ -164,6 +175,13 @@ export class MaestrosComponent implements OnInit {
     this.mostrarModal = true;
     this.formActual.reset();
     if (this.tabActual === 'puestos') this.puestoForm.get('idArea')?.setValue('');
+    // reset() deja los booleanos en null, que el backend lee como false y
+    // crearia un tipo que no aparece en ninguna de las dos pantallas.
+    if (this.tabActual === 'tipos-ausencia') {
+      this.tipoAusenciaForm.patchValue({
+        aplicaPermiso: true, aplicaFaltaJustificada: true
+      });
+    }
     this.modalTitulo = `Nuevo ${this.labelSingular}`;
     this.cdr.detectChanges();
   }
@@ -235,7 +253,7 @@ export class MaestrosComponent implements OnInit {
         this.cargar();
       },
       error: (err: any) => {
-        this.modalError = err.error?.message || 'Error al guardar.';
+        this.modalError = mensajeError(err, 'Error al guardar.');
         this.guardando  = false;
         this.cdr.detectChanges();
       }
@@ -278,7 +296,7 @@ export class MaestrosComponent implements OnInit {
       error: (err: any) => {
         // El backend rechaza desactivar un turno en uso por algún esquema
         // vigente, y explica cuántos son.
-        this.errorGlobal = err.error?.message || 'Error.';
+        this.errorGlobal = mensajeError(err, 'Error.');
         this.cancelarToggle();
         this.cdr.detectChanges();
       }
@@ -296,6 +314,16 @@ export class MaestrosComponent implements OnInit {
       case 'turnos':         return item.idTurno;
       default:               return item.id;   // tipos-ausencia, motivos-cese
     }
+  }
+
+  /**
+   * true si se está creando un tipo de ausencia sin marcar ninguna de las
+   * dos casillas. Ese tipo no aparecería en ninguna pantalla.
+   */
+  get tipoAusenciaSinDestino(): boolean {
+    if (this.tabActual !== 'tipos-ausencia') return false;
+    return !this.tipoAusenciaForm.get('aplicaPermiso')?.value
+        && !this.tipoAusenciaForm.get('aplicaFaltaJustificada')?.value;
   }
 
   get formActual(): FormGroup {
@@ -333,26 +361,26 @@ export class MaestrosComponent implements OnInit {
 
   /** Nombre visible del elemento, sea cual sea la pestaña. */
   nombreDe(item: any): string {
-    return item.genero ?? item.area ?? item.puesto ?? item.nombre ?? '—';
+    return item.genero ?? item.area ?? item.puesto ?? item.nombre ?? '-';
   }
 
   /** Segunda columna, distinta en cada catálogo. */
   detalleDe(item: any): string {
     switch (this.tabActual) {
       case 'puestos':
-        return item.areaNombre ?? '—';
+        return item.areaNombre ?? '-';
       case 'turnos':
         return this.rangoTurno(item);
       case 'tipos-ausencia':
-        return item.descripcion ?? '—';
+        return item.descripcion ?? '-';
       default:
-        return '—';
+        return '-';
     }
   }
 
   /** Rango horario informativo del turno. */
   private rangoTurno(t: Turno): string {
-    if (!t.horaInicio || !t.horaFin) return '—';
+    if (!t.horaInicio || !t.horaFin) return '-';
     const ini = t.horaInicio.substring(0, 5);
     const fin = t.horaFin.substring(0, 5);
     return t.cruzaMedianoche

@@ -278,7 +278,7 @@ export class ReporteConsolidadoComponent implements OnInit {
                       numerico: boolean) {
 
     const titulo = [
-      [`Consolidado quincenal — ${this.reporte!.descripcion}`],
+      [`Consolidado quincenal - ${this.reporte!.descripcion}`],
       [`Período: ${this.periodo()}`],
       [numerico
         ? 'Valores en minutos, para cálculos.'

@@ -1,13 +1,13 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FechaPePipe, fechaPe } from '../../../shared/fecha-pe.pipe';
+import { fechaPe } from '../../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { AsistenciaService } from '../../../core/services/asistencia.service';
 
 @Component({
   selector: 'app-asistencia-dia',
   standalone: true,
-  imports: [CommonModule, FormsModule, FechaPePipe],
+  imports: [CommonModule, FormsModule],
   templateUrl: './asistencia-dia.html',
   styleUrl: './asistencia-dia.css'
 })
@@ -61,6 +61,8 @@ export class AsistenciaDiaComponent implements OnInit {
       const t = this.terminoBusqueda.toLowerCase();
       resultado = resultado.filter(a =>
         a.nombreCompleto?.toLowerCase().includes(t) ||
+        // El documento puede llegar vacío según el rol (RN-05); el
+        // encadenamiento opcional evita que el filtro falle por eso.
         a.nroDocumento?.includes(t)                 ||
         a.areaNombre?.toLowerCase().includes(t)     ||
         a.puestoNombre?.toLowerCase().includes(t)
@@ -206,7 +208,7 @@ export class AsistenciaDiaComponent implements OnInit {
       case 'HORA_EXTRA_NO_PROGRAMADA': return 'Hora extra';
       case 'NO_PROGRAMADA':            return 'No programada';
       case 'CONTINGENCIA':             return 'Contingencia';
-      default:                         return this.getEstadoDiario(a) || '—';
+      default:                         return this.getEstadoDiario(a) || '-';
     }
   }
 
@@ -239,7 +241,7 @@ export class AsistenciaDiaComponent implements OnInit {
       FALTA:         'Falta',
       PERMISO:       'Permiso'
     };
-    return mapa[tipo] ?? tipo ?? '—';
+    return mapa[tipo] ?? tipo ?? '-';
   }
 
   getFechaHoy(): string {

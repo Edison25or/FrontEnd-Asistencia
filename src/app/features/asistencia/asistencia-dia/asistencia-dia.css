@@ -56,17 +56,23 @@
 /* =======================================
    TARJETAS DE RESUMEN
    ======================================= */
+/* Cinco columnas, no cuatro: al agregar la tarjeta de "Sin marcar" la
+   quinta caía sola a una segunda fila. Por debajo de 1250px se reacomodan
+   en vez de dejar una suelta. */
 .resumen-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
   margin-bottom: 24px;
+}
+@media (max-width: 1250px) {
+  .resumen-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 }
 
 .resumen-card {
   background: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px 14px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -264,4 +270,26 @@
   color: #9ca3af;
   margin: 14px 4px 0;
   line-height: 1.5;
+}
+
+
+/* ── Hora programada bajo la real ────────────────────────── */
+/* Discreta a propósito: es la referencia, no el dato principal. */
+.hora-prog {
+  font-size: .68rem;
+  color: #94a3b8;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+
+/* Aclara qué representa cada línea de las celdas de hora. */
+.th-sub2 {
+  display: block;
+  font-size: .64rem;
+  font-weight: 400;
+  color: #94a3b8;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: 2px;
 }

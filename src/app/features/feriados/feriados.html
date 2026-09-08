@@ -56,7 +56,7 @@
               <td class="col-fecha">{{ f.fecha | fechaPe }}</td>
               <td class="col-dia">{{ diaSemana(f.fecha) }}</td>
               <td class="col-nombre">{{ f.descripcion }}</td>
-              <td class="col-usuario">{{ f.registradoPor || '—' }}</td>
+              <td class="col-usuario">{{ f.registradoPor || '-' }}</td>
               @if (esSuperAdmin()) {
                 <td class="col-acciones">
                   <button class="btn-icon" title="Dar de baja" (click)="confirmarBaja(f)">
@@ -195,7 +195,7 @@
       </div>
 
       <p>
-        <strong>{{ feriadoParaBaja.fecha | fechaPe }}</strong> — {{ feriadoParaBaja.descripcion }}
+        <strong>{{ feriadoParaBaja.fecha | fechaPe }}</strong> - {{ feriadoParaBaja.descripcion }}
       </p>
       <p class="modal-nota">
         Se revertirá su efecto: las horas de feriado de las jornadas afectadas se

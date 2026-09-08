@@ -215,7 +215,7 @@
 .btn-cancelar:disabled, .btn-guardar:disabled { opacity: .6; cursor: not-allowed; }
 
 /* ══════════════════════════════════════════════════════════ */
-/* BANDEJA DE PENDIENTES — CU20                                */
+/* BANDEJA DE PENDIENTES - CU20                                */
 /* ══════════════════════════════════════════════════════════ */
 
 /* ── Chips de ausencia ──────────────────────────────────── */
@@ -324,62 +324,69 @@
 
 
 /* ══════════════════════════════════════════════════════════ */
-/* SELECTOR DE QUINCENA, EN LA CABECERA                        */
+/* SELECTOR DE QUINCENA                                        */
 /* ══════════════════════════════════════════════════════════ */
 /*
-   Píldoras de dos líneas, con la misma altura que el bloque de título y
-   subtítulo. Igualar alturas evita la franja en blanco a los lados del
-   texto: el espacio ya estaba reservado, así que se aprovecha para
-   mostrar el rango de fechas en vez de esconderlo en un tooltip.
+   Desplegable en lugar de píldoras. Con diez períodos las píldoras
+   ocupaban tres filas; el desplegable mantiene la altura fija sin
+   importar cuántos existan.
 */
-.q-chips {
+.q-selector {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
 }
-/* 44px = alto del título (~20px) + subtítulo (~15px) + su separación. */
-.q-chip {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-height: 44px;
-  padding: 5px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #fff;
-  cursor: pointer;
-  transition: all .15s;
-  white-space: nowrap;
-  text-align: left;
-}
-.q-chip:hover { border-color: #cbd5e1; background: #f8fafc; }
-.q-chip-activa {
-  border-color: #8cc63f;
-  background: #f7fee7;
-  box-shadow: 0 0 0 2px rgba(140, 198, 63, .18);
-}
-.q-chip-cerrada { opacity: .7; }
-
-.q-chip-linea1 { display: flex; align-items: center; gap: 6px; }
-.q-chip-desc  { font-size: 0.79rem; font-weight: 700; color: #1e293b; }
-.q-chip-rango {
-  font-size: 0.68rem;
-  color: #94a3b8;
-  font-variant-numeric: tabular-nums;
-}
-.q-chip-activa .q-chip-rango { color: #65a30d; }
-.q-chip-lock  { font-size: 0.68rem; }
-.q-chip-pend {
-  font-size: 0.64rem;
+.q-label {
+  font-size: .72rem;
   font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.q-select {
+  min-width: 330px;
+  padding: 9px 34px 9px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: .86rem;
+  font-family: inherit;
+  color: #1e293b;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.q-select:hover:not(:disabled) { border-color: #94a3b8; }
+.q-select:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, .18);
+}
+.q-select:disabled { background-color: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+
+/* Estado y pendientes, visibles sin desplegar */
+.q-estado {
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  color: #15803d;
+  background: #dcfce7;
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+.q-estado-cerrada { color: #64748b; background: #f1f5f9; }
+.q-pend {
+  font-size: .72rem;
+  font-weight: 700;
   color: #92400e;
   background: #fef3c7;
   border-radius: 20px;
-  padding: 1px 7px;
+  padding: 3px 10px;
 }
 
 .rev-acciones {
@@ -389,27 +396,64 @@
   margin-left: auto;
 }
 
-/* Misma altura que las píldoras, para que la fila quede alineada. */
-.rev-acciones .btn-np,
-.btn-cierre-diario { min-height: 44px; }
-
 .btn-cierre-diario {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px;
+  padding: 9px 14px;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 9px;
   background: #fff;
   color: #475569;
-  font-size: 0.82rem;
+  font-size: .82rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 .btn-cierre-diario:hover { background: #f8fafc; border-color: #cbd5e1; }
 
-/* El layout deja de tener dos columnas. */
 .rev-layout { display: block !important; }
 .panel-asistencias { width: 100%; }
+
+/* ── Buscador, con el mismo estilo que los demás campos ──── */
+/* Antes era un input plano que desentonaba con los selectores de al
+   lado, que sí tenían borde redondeado y foco verde. */
+.filtro-input {
+  padding: 9px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: .86rem;
+  font-family: inherit;
+  color: #1e293b;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+.filtro-input::placeholder { color: #b6c2d1; }
+.filtro-input:hover  { border-color: #94a3b8; }
+.filtro-input:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, .18);
+}
+
+.filtro-select {
+  padding: 9px 32px 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: .86rem;
+  font-family: inherit;
+  color: #1e293b;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.filtro-select:focus {
+  outline: none;
+  border-color: #8cc63f;
+  box-shadow: 0 0 0 3px rgba(140, 198, 63, .18);
+}
 
 /* ══════════════════════════════════════════════════════════ */
 /* COLUMNA DE ACCIONES SIEMPRE VISIBLE                         */
@@ -469,3 +513,149 @@
 .qa-filtros .filtro-input,
 .qa-filtros .filtro-select { margin: 0; }
 .filtro-wide { flex: 1; min-width: 180px; }
+
+
+/* ── Bandeja de pendientes vacía ─────────────────────────── */
+/* Verde y no gris: que no quede nada pendiente es un resultado
+   deseable, no la ausencia de datos. */
+.vacio-ok {
+  display: block;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #15803d;
+  margin-bottom: 6px;
+}
+.vacio-detalle {
+  display: block;
+  font-size: .82rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+
+/* ── Faltas generadas por el proceso, sin confirmar ──────── */
+/* Rojo suave y no ámbar: el ámbar marca lo que bloquea el cierre, y esto
+   no lo hace. Son dos situaciones con salidas distintas. */
+.chip-sinconfirmar {
+  display: inline-block;
+  margin-left: 6px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: .68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.cnt-rojo {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+
+/* ── Explicación de la falta injustificada ───────────────── */
+/* Sustituye a los campos de hora extra, que en una falta salen vacíos.
+   El Jefe necesita entender por qué figura así y qué puede hacer, no un
+   formulario para aprobar minutos que no existen. */
+.falta-explica {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.fe-titulo {
+  font-size: .78rem;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+.fe-titulo:first-child { margin-top: 0; }
+.falta-explica p {
+  margin: 0;
+  font-size: .82rem;
+  color: #64748b;
+  line-height: 1.55;
+}
+.fe-acciones {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  font-size: .82rem;
+  color: #64748b;
+  line-height: 1.55;
+}
+.fe-acciones li { margin-bottom: 7px; }
+.fe-acciones strong { color: #334155; }
+.fe-acciones em { color: #15803d; font-style: normal; font-weight: 600; }
+
+.opcional { color: #94a3b8; font-weight: 400; font-size: .82em; }
+
+
+/* ── Buscador de trabajador del registro manual ──────────── */
+.lista-sugerencias {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  margin-top: 5px;
+  max-height: 190px;
+  overflow-y: auto;
+  background: #fff;
+}
+.sugerencia {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: none;
+  cursor: pointer;
+}
+.sugerencia:last-child { border-bottom: none; }
+.sugerencia:hover { background: #f0fdf4; }
+.sugerencia strong { font-size: .85rem; color: #334155; font-weight: 600; }
+.sugerencia em {
+  font-size: .74rem; color: #94a3b8; font-style: normal;
+}
+.sin-resultados {
+  padding: 11px 12px;
+  font-size: .8rem;
+  color: #94a3b8;
+}
+
+.trab-elegido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 9px;
+  background: #f0fdf4;
+}
+.trab-elegido span { display: flex; flex-direction: column; gap: 1px; }
+.trab-elegido strong { font-size: .86rem; color: #166534; font-weight: 600; }
+.trab-elegido em {
+  font-size: .74rem; color: #4d7c53; font-style: normal;
+}
+.btn-quitar {
+  border: none; background: none; cursor: pointer;
+  color: #64748b; font-size: 1rem; padding: 2px 6px;
+}
+.btn-quitar:hover { color: #dc2626; }
+
+/* Aviso sobre qué hace el registro según haya jornada programada. */
+.aviso-np {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: .79rem;
+  line-height: 1.5;
+  margin-bottom: 13px;
+}

@@ -233,3 +233,32 @@
 .btn-deshabilitar:hover { background: #b45309; }
 .btn-habilitar    { background: #16a34a; }
 .btn-habilitar:hover    { background: #15803d; }
+
+/* ── Casillas de clasificación del tipo de ausencia ──────── */
+/* Cada opción lleva su ejemplo debajo: sin él, "permiso" y "falta
+   justificada" suenan intercambiables para quien no conoce la regla. */
+.check-tipo {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-weight: 400;
+}
+.check-tipo:hover { border-color: #cbd5e1; background: #f8fafc; }
+.check-tipo input {
+  margin-top: 2px;
+  accent-color: #8cc63f;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.check-tipo span { display: flex; flex-direction: column; gap: 2px; }
+.check-tipo strong { font-size: .85rem; color: #334155; font-weight: 600; }
+.check-tipo em {
+  font-size: .76rem; color: #94a3b8;
+  font-style: normal; line-height: 1.45;
+}

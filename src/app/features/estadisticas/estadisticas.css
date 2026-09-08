@@ -204,3 +204,19 @@
 .nota-pie {
   font-size: .76rem; color: #9ca3af; margin: 6px 4px 0; line-height: 1.5;
 }
+
+
+/* ── Alcance del rol restringido ─────────────────────────── */
+/* Ocupa el lugar del selector de área. Sin esta marca, el Jefe o el
+   Supervisor podrían leer las cifras como si fueran de toda la empresa. */
+.alcance-area {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 13px;
+  border-radius: 9px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: .84rem;
+  font-weight: 600;
+  white-space: nowrap;
+}

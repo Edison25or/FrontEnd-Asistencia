@@ -1,8 +1,10 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FechaPePipe } from '../../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { RevisionAsistenciaService } from '../../../core/services/revision-asistencia.service';
+import { TrabajadorService } from '../../../core/services/trabajador.service';
 
 @Component({
   selector: 'app-revision-asistencia',
@@ -15,6 +17,7 @@ export class RevisionAsistenciaComponent implements OnInit {
 
   private svc = inject(RevisionAsistenciaService);
   private cdr = inject(ChangeDetectorRef);
+  private trabSvc = inject(TrabajadorService);
 
   // ── Estado general ────────────────────────────────────────
   quincenas:         any[]  = [];
@@ -37,8 +40,48 @@ export class RevisionAsistenciaComponent implements OnInit {
    * requiereRevision es justo lo que bloquea el cierre de quincena
    * (RN-37). Filtrar por estado no sirve, porque una falta injustificada
    * y una jornada revisada a mano comparten estado REVISADO.
+   *
+   * Empieza ACTIVADO. Quien entra a esta pantalla viene a resolver lo que
+   * impide cerrar la quincena; el listado completo, con varios cientos de
+   * jornadas ya resueltas, obliga a buscar esos registros entre todo lo
+   * demás.
+   *
+   * ============================================================
+   * QUE INCLUYE "REQUIERE ATENCIÓN"
+   * ============================================================
+   * No basta con requiereRevision. Ese indicador marca lo que BLOQUEA el
+   * cierre de la quincena, y una falta injustificada no lo hace a
+   * propósito: si lo hiciera, la falta de un solo trabajador impediría
+   * consolidar a los demás (RN-42).
+   *
+   * Pero esa falta la decidió el proceso automático, no una persona, y
+   * el Jefe debería confirmarla o reclasificarla mientras la quincena
+   * siga abierta. Filtrando solo por requiereRevision quedaba invisible.
+   *
+   * Se reconocen por revisadoPor vacío: el cierre diario no lo completa,
+   * justamente para distinguir lo que resolvió el sistema de lo que
+   * decidió alguien.
    */
-  soloPendientesRevision = false;
+  soloPendientesRevision = true;
+
+  /** true si la jornada la resolvió el proceso y nadie la confirmó. */
+  private resueltaPorSistema(a: any): boolean {
+    return a.tipo === 'FALTA_INJUSTIFICADA' && !a.revisadoPor;
+  }
+
+  /** Jornadas que piden una decisión del Jefe, bloqueen o no el cierre. */
+  requiereAtencion(a: any): boolean {
+    return a.requiereRevision === true || this.resueltaPorSistema(a);
+  }
+
+  /** De las que piden atención, cuántas impiden cerrar la quincena. */
+  get totalBloqueantes(): number {
+    return this.asistencias.filter(a => a.requiereRevision === true).length;
+  }
+
+  get totalFaltasSinConfirmar(): number {
+    return this.asistencias.filter(a => this.resueltaPorSistema(a)).length;
+  }
 
   // ── Modal: crear quincena ─────────────────────────────────
   mostrarModalQ    = false;
@@ -71,6 +114,18 @@ export class RevisionAsistenciaComponent implements OnInit {
   // ── Modal: asistencia no programada ──────────────────────
   mostrarModalNP     = false;
   npIdTrabajador     = '';
+
+  /**
+   * Búsqueda de trabajador por nombre o documento.
+   *
+   * El formulario pedía el identificador numérico interno, que nadie
+   * conoce de memoria: había que salir a la pantalla de trabajadores,
+   * buscarlo, anotarlo y volver.
+   */
+  npBusqueda         = '';
+  npSugerencias: any[] = [];
+  npTrabajadorSel: any = null;
+  private npTodos: any[] = [];
   npFecha            = '';
   npIngreso          = '';
   npSalida           = '';
@@ -88,15 +143,56 @@ export class RevisionAsistenciaComponent implements OnInit {
   cargarQuincenas() {
     this.isLoadingQ = true;
     this.svc.getQuincenas().subscribe({
-      next: q => { this.quincenas = q; this.isLoadingQ = false; this.cdr.detectChanges(); },
+      next: q => {
+        this.quincenas  = q;
+        this.isLoadingQ = false;
+        // Se abre en la quincena vigente. Antes la pantalla arrancaba
+        // vacía y había que elegir una, cuando en la práctica quien entra
+        // aquí viene a resolver los pendientes del período en curso.
+        if (!this.quincenaActual) {
+          const vigente = this.quincenaVigente();
+          if (vigente) this.seleccionarQuincena(vigente);
+        }
+        this.cdr.detectChanges();
+      },
       error: () => { this.isLoadingQ = false; this.cdr.detectChanges(); }
     });
+  }
+
+  /**
+   * Quincena que contiene el día de hoy.
+   *
+   * Si hoy cae fuera de todo período (porque aún no se programó la semana
+   * en curso), se toma la más reciente que ya empezó. Devolver null
+   * dejaría la pantalla vacía sin explicación.
+   */
+  private quincenaVigente(): any {
+    if (!this.quincenas.length) return null;
+    const hoy = new Date().toISOString().substring(0, 10);
+
+    const contiene = this.quincenas.find(q =>
+      String(q.inicio).substring(0, 10) <= hoy &&
+      hoy < String(q.fin).substring(0, 10));
+    if (contiene) return contiene;
+
+    const pasadas = this.quincenas
+      .filter(q => String(q.inicio).substring(0, 10) <= hoy)
+      .sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)));
+    return pasadas[0] ?? this.quincenas[0];
+  }
+
+  /** Selección desde el desplegable, que entrega el identificador. */
+  seleccionarPorId(id: number) {
+    const q = this.quincenas.find(x => x.idQuincena === Number(id));
+    if (q) this.seleccionarQuincena(q);
   }
 
   seleccionarQuincena(q: any) {
     this.quincenaActual = q;
     this.filtroNombre = this.filtroEstado = this.filtroTipo = '';
-    this.soloPendientesRevision = false;
+    // El filtro de pendientes NO se reinicia al cambiar de quincena: si
+    // alguien está revisando pendientes, lo natural es seguir viéndolos
+    // en el período siguiente.
     this.cargarAsistencias();
   }
 
@@ -134,7 +230,7 @@ export class RevisionAsistenciaComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorQ = e.error?.message || 'Error al ejecutar el cierre diario.';
+        this.errorQ = mensajeError(e, 'Error al ejecutar el cierre diario.');
         this.isProcesando = false;
         this.cdr.detectChanges();
       }
@@ -150,7 +246,7 @@ export class RevisionAsistenciaComponent implements OnInit {
       const ok1 = !this.filtroNombre || nombre.includes(this.filtroNombre.toLowerCase());
       const ok2 = !this.filtroEstado || a.estado === this.filtroEstado;
       const ok3 = !this.filtroTipo  || a.tipo   === this.filtroTipo;
-      const ok4 = !this.soloPendientesRevision || a.requiereRevision === true;
+      const ok4 = !this.soloPendientesRevision || this.requiereAtencion(a);
       return ok1 && ok2 && ok3 && ok4;
     });
   }
@@ -186,6 +282,46 @@ export class RevisionAsistenciaComponent implements OnInit {
     this.mostrarModalVal = true;
   }
 
+  /**
+   * true si el registro es una falta injustificada.
+   *
+   * El modal se comporta distinto: una falta no admite validación de
+   * horas extra, porque no hubo marcación de la que derivar minutos.
+   */
+  esFalta(a: any): boolean {
+    return a?.tipo === 'FALTA_INJUSTIFICADA';
+  }
+
+  /**
+   * Acuse de revisión sobre una jornada que resolvió el proceso.
+   *
+   * No altera ningún valor calculado ni el indicador de bloqueo: solo
+   * deja constancia de quién la miró. La falta ya era correcta; si no lo
+   * fuera, lo que corresponde es registrar la ausencia o la marcación por
+   * contingencia, y en ambos casos el sistema la corrige por su cuenta.
+   */
+  confirmarRevision() {
+    if (!this.asistenciaVal) return;
+    this.isProcesando = true;
+    this.errorVal = '';
+
+    this.svc.confirmarRevision(this.asistenciaVal.idAsistencia, this.valObservacion)
+      .subscribe({
+        next: () => {
+          this.isProcesando   = false;
+          this.mostrarModalVal = false;
+          this.valObservacion = '';
+          this.cargarAsistencias();
+          this.cdr.detectChanges();
+        },
+        error: (e: any) => {
+          this.errorVal     = mensajeError(e, 'No se pudo confirmar la revisión.');
+          this.isProcesando = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
   guardarValidacion() {
     if (!this.asistenciaVal) return;
 
@@ -213,15 +349,53 @@ export class RevisionAsistenciaComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorVal = e.error?.message || 'Error al guardar.';
+        this.errorVal = mensajeError(e, 'Error al guardar.');
         this.isProcesando = false; this.cdr.detectChanges();
       }
     });
   }
 
   // ── Asistencia no programada ──────────────────────────────
+  /** Carga la lista de trabajadores activos, una sola vez. */
+  private cargarTrabajadoresNP() {
+    if (this.npTodos.length) return;
+    this.trabSvc.getTrabajadores(0, 500).subscribe({
+      next: (r: any) => {
+        this.npTodos = (r.content ?? r ?? [])
+          .filter((t: any) => t.estado === 'ACTIVO');
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+  }
+
+  buscarTrabajadorNP() {
+    const q = this.npBusqueda.trim().toLowerCase();
+    if (q.length < 2) { this.npSugerencias = []; return; }
+    this.npSugerencias = this.npTodos.filter((t: any) =>
+      t.nombreCompleto?.toLowerCase().includes(q) ||
+      t.nroDocumento?.includes(q)
+    ).slice(0, 8);
+  }
+
+  seleccionarTrabajadorNP(t: any) {
+    this.npTrabajadorSel = t;
+    this.npIdTrabajador  = String(t.idTrabajador);
+    this.npBusqueda      = '';
+    this.npSugerencias   = [];
+  }
+
+  limpiarTrabajadorNP() {
+    this.npTrabajadorSel = null;
+    this.npIdTrabajador  = '';
+    this.npBusqueda      = '';
+    this.npSugerencias   = [];
+  }
+
   abrirModalNP() {
-    this.npIdTrabajador = ''; this.npFecha = '';
+    this.cargarTrabajadoresNP();
+    this.limpiarTrabajadorNP();
+    this.npFecha = '';
     this.npIngreso = ''; this.npSalida = '';
     this.npObservacion = ''; this.errorNP = '';
     this.mostrarModalNP = true;
@@ -258,7 +432,7 @@ export class RevisionAsistenciaComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorNP = e.error?.message || 'Error al registrar.';
+        this.errorNP = mensajeError(e, 'Error al registrar.');
         this.isProcesando = false; this.cdr.detectChanges();
       }
     });
@@ -266,7 +440,7 @@ export class RevisionAsistenciaComponent implements OnInit {
 
   // ── Helpers ───────────────────────────────────────────────
   formatMin(min: number | null): string {
-    if (min == null || min === 0) return '—';
+    if (min == null || min === 0) return '-';
     const h = Math.floor(Math.abs(min) / 60);
     const m = Math.abs(min) % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;

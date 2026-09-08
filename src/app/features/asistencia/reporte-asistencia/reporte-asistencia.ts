@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
 import { FechaPePipe, fechaPe } from '../../../shared/fecha-pe.pipe';
+import { AuthService } from '../../../core/services/auth';
 import * as XLSX from 'xlsx-js-style';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -36,6 +37,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   private reporteService    = inject(ReporteService);
   private trabajadorService = inject(TrabajadorService);
   private cdr               = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
 
   // ── Filtros ──
   fechaInicio   = this.primerDiaMes();
@@ -44,6 +46,21 @@ export class ReporteAsistenciaComponent implements OnInit {
   idArea:       number | null = null;
 
   areas:        any[] = [];
+
+  rolUsuario = '';
+  areaPropia = '';
+
+  /**
+   * true si el rol queda acotado a su propia área.
+   *
+   * El Jefe ve solo su ámbito (RN-01), de modo que ofrecerle el selector
+   * de área lo invitaría a elegir una que el servidor va a descartar, y
+   * el buscador de trabajador le mostraría personal que no puede
+   * consultar.
+   */
+  restringidoASuArea(): boolean {
+    return this.rolUsuario === 'ROLE_JEFE';
+  }
   trabajadores: any[] = [];
   trabajadoresFiltrados: any[] = [];
   terminoBusquedaTrab = '';
@@ -76,7 +93,13 @@ export class ReporteAsistenciaComponent implements OnInit {
 
     // Sin marcación no es "a tiempo": es una jornada que aún no ocurrió.
     if (!r.horaEntrada) {
-      return r.estado === 'PENDIENTE' ? 'PENDIENTE' : (r.tipo || 'SIN_MARCAR');
+      // Una jornada sin marcar puede estar en tres situaciones, y las
+      // tres deben decir algo. Devolver el tipo tal cual dejaba
+      // 'PROGRAMADA' sin etiqueta, que es como salir en blanco: el
+      // trabajador veía la fila vacía sin saber si le contaba como falta.
+      if (r.estado === 'PENDIENTE') return 'PENDIENTE';
+      if (r.tipo === 'PROGRAMADA')  return 'SIN_MARCAR';
+      return r.tipo || 'SIN_MARCAR';
     }
     if (r.tipo === 'MARCACION_INCOMPLETA')     return 'INCOMPLETA';
     if (r.tipo === 'HORA_EXTRA_NO_PROGRAMADA') return 'HORA_EXTRA';
@@ -141,19 +164,34 @@ export class ReporteAsistenciaComponent implements OnInit {
   ngOnInit() {
     this.trabajadorService.getAreas().subscribe(d => {
       this.areas = d;
+      this.rolUsuario = this.authService.getRolUsuario() || '';
       this.cdr.detectChanges();
     });
 
     this.trabajadorService.getTrabajadores(0, 500).subscribe(res => {
       this.trabajadores          = res.content || res;
-      this.trabajadoresFiltrados = [...this.trabajadores];
+
+      // El área propia se toma de la ficha del usuario dentro del
+      // listado, que ya viene cargado.
+      const idPropio = this.authService.getIdTrabajador();
+      const yo = this.trabajadores.find((t: any) =>
+        String(t.idTrabajador) === String(idPropio));
+      this.areaPropia = yo?.areaNombre ?? '';
+
+      this.trabajadoresFiltrados = [...this.trabajadoresPermitidos];
       this.cdr.detectChanges();
     });
   }
 
+  /** Trabajadores que el rol puede consultar. */
+  get trabajadoresPermitidos(): any[] {
+    if (!this.restringidoASuArea() || !this.areaPropia) return this.trabajadores;
+    return this.trabajadores.filter(t => t.areaNombre === this.areaPropia);
+  }
+
   filtrarTrabajadores() {
     const t = this.terminoBusquedaTrab.toLowerCase();
-    this.trabajadoresFiltrados = this.trabajadores.filter(tr =>
+    this.trabajadoresFiltrados = this.trabajadoresPermitidos.filter(tr =>
       tr.nombreCompleto?.toLowerCase().includes(t) ||
       tr.nroDocumento?.includes(t)
     );
@@ -161,6 +199,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   }
 
   seleccionarTrabajador(t: any) {
+    this.avisoTrabajador       = '';
     this.idTrabajador          = t.idTrabajador;
     this.terminoBusquedaTrab   = t.nombreCompleto;
     this.trabajadoresFiltrados = [];
@@ -168,14 +207,47 @@ export class ReporteAsistenciaComponent implements OnInit {
   }
 
   limpiarTrabajador() {
+    this.avisoTrabajador       = '';
     this.idTrabajador          = null;
     this.terminoBusquedaTrab   = '';
-    this.trabajadoresFiltrados = [...this.trabajadores];
+    this.trabajadoresFiltrados = [...this.trabajadoresPermitidos];
     this.cdr.detectChanges();
   }
 
+  /** Aviso cuando lo escrito en el buscador no identifica a nadie. */
+  avisoTrabajador = '';
+
   buscar() {
     if (!this.fechaInicio || !this.fechaFin) return;
+
+    // ============================================================
+    // EL TEXTO ESCRITO DEBE RESOLVERSE A UN TRABAJADOR
+    // ============================================================
+    // Al escribir un documento sin elegirlo de la lista, idTrabajador
+    // quedaba vacío y la consulta se hacía sobre TODO el personal. El
+    // usuario creía estar filtrando por esa persona y recibía el listado
+    // completo, sin que nada se lo advirtiera.
+    this.avisoTrabajador = '';
+    const texto = this.terminoBusquedaTrab.trim();
+
+    if (texto && !this.idTrabajador) {
+      const coincidencias = this.trabajadoresPermitidos.filter((t: any) =>
+        t.nroDocumento === texto ||
+        t.nombreCompleto?.toLowerCase() === texto.toLowerCase());
+
+      if (coincidencias.length === 1) {
+        // Coincidencia exacta: se resuelve sola, sin obligar a elegir.
+        this.seleccionarTrabajador(coincidencias[0]);
+      } else {
+        this.avisoTrabajador = coincidencias.length === 0
+          ? 'Ningún trabajador de tu alcance coincide con ese dato. '
+            + 'Elige uno de la lista o limpia el campo para ver a todos.'
+          : 'Hay más de una coincidencia. Elige una de la lista.';
+        this.cdr.detectChanges();
+        return;
+      }
+    }
+
     this.isLoading = true;
     this.buscado   = false;
 
@@ -395,7 +467,7 @@ export class ReporteAsistenciaComponent implements OnInit {
         didDrawPage: () => {
           doc.setFontSize(7);
           doc.setTextColor(130);
-          doc.text('Sistema de Control de Asistencia — Avendaño Trading Company S.A.C.',
+          doc.text('Sistema de Control de Asistencia - Avendaño Trading Company S.A.C.',
                    14, alto - 8);
           doc.text(`Página ${doc.getNumberOfPages()}`,
                    ancho - 14, alto - 8, { align: 'right' });
@@ -430,7 +502,7 @@ export class ReporteAsistenciaComponent implements OnInit {
   }
 
   minutosAHoras(min: number | null): string {
-    if (min == null) return '—';
+    if (min == null) return '-';
     return `${Math.floor(min / 60)}h ${(min % 60).toString().padStart(2, '0')}m`;
   }
 

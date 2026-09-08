@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FechaPePipe } from '../../shared/fecha-pe.pipe';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -20,10 +21,10 @@ type Tab = 'permisos' | 'faltas';
  * Comparten catálogo de tipos y ambos neutralizan pre-registros, pero
  * tienen reglas de plazo distintas:
  *
- *   Permiso           — planificado, se espera de una a dos semanas de
+ *   Permiso           - planificado, se espera de una a dos semanas de
  *                       anticipación. Fuera de ese plazo se acepta igual,
  *                       marcado como excepción visible (RN-30).
- *   Falta justificada — no planificada, sin límite de plazo (RN-32).
+ *   Falta justificada - no planificada, sin límite de plazo (RN-32).
  *
  * ============================================================
  * EL TRABAJADOR NO SOLICITA
@@ -51,7 +52,58 @@ export class AusenciasComponent implements OnInit {
 
   // ── Datos ─────────────────────────────────────────────────
   trabajadores:  any[]            = [];
+
+  /**
+   * Trabajadores sobre los que el usuario puede registrar una ausencia.
+   *
+   * El Jefe solo alcanza a los de su propia área (RN-01). Ofrecerle la
+   * plantilla completa lo invitaba a elegir a alguien que el servidor va
+   * a rechazar, y el rechazo llegaría después de haber completado el
+   * formulario entero.
+   *
+   * El área propia se deduce del primer registro que coincide con el
+   * usuario autenticado, ya que el listado la trae por trabajador.
+   */
+  get trabajadoresDisponibles(): any[] {
+    if (this.rolUsuario !== 'ROLE_JEFE') return this.trabajadores;
+    if (!this.areaPropia) return this.trabajadores;
+    return this.trabajadores.filter(t => t.areaNombre === this.areaPropia);
+  }
+
+  areaPropia = '';
   tiposAusencia: CatalogoSimple[] = [];
+
+  /**
+   * Muestra todos los tipos, sin filtrar por la pestaña activa.
+   *
+   * Existe porque la clasificación orienta pero no debería obstruir. Una
+   * operación programada con antelación es un permiso por descanso
+   * médico, aunque ese tipo se asocie normalmente a lo imprevisto. Sin
+   * esta salida, un caso legítimo no podría registrarse.
+   */
+  mostrarTodosLosTipos = false;
+
+  /**
+   * Tipos que corresponden a la pestaña activa.
+   *
+   * Ambos formularios compartían la lista completa, de modo que ofrecían
+   * "Vacaciones" como falta justificada y "Descanso médico" como permiso.
+   * Ninguna de las dos describe algo que ocurra: nadie deja de venir por
+   * vacaciones y lo justifica después, ni programa enfermarse con dos
+   * semanas de anticipación.
+   */
+  get tiposDisponibles(): CatalogoSimple[] {
+    if (this.mostrarTodosLosTipos) return this.tiposAusencia;
+    return this.tiposAusencia.filter(t =>
+      this.tabActual === 'permisos'
+        ? t.aplicaPermiso !== false
+        : t.aplicaFaltaJustificada !== false);
+  }
+
+  /** Cuántos quedan fuera con el filtro puesto, para poder ofrecerlos. */
+  get tiposOcultos(): number {
+    return this.tiposAusencia.length - this.tiposDisponibles.length;
+  }
 
   permisos: PermisoResponse[]          = [];
   faltas:   FaltaJustificadaResponse[] = [];
@@ -119,6 +171,13 @@ export class AusenciasComponent implements OnInit {
     }).subscribe({
       next: (res: any) => {
         this.trabajadores  = res.trabajadores.content || res.trabajadores;
+
+        // El área del usuario se toma de su propia ficha dentro del
+        // listado, que ya viene cargado.
+        const idPropio = this.auth.getIdTrabajador();
+        const yo = this.trabajadores.find((t: any) =>
+          String(t.idTrabajador) === String(idPropio));
+        this.areaPropia = yo?.areaNombre ?? '';
         this.tiposAusencia = res.tipos;
         this.isLoading     = false;
 
@@ -217,7 +276,7 @@ export class AusenciasComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.modalError = err.error?.message || 'Error al registrar.';
+        this.modalError = mensajeError(err, 'Error al registrar.');
         this.guardando  = false;
         this.cdr.detectChanges();
       }
@@ -279,7 +338,7 @@ export class AusenciasComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorEliminar = err.error?.message || 'Error al eliminar.';
+        this.errorEliminar = mensajeError(err, 'Error al eliminar.');
         this.guardando     = false;
         this.cdr.detectChanges();
       }

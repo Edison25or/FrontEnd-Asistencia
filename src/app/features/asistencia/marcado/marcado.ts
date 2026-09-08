@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, ElementRef, ViewChild } from '@angular/core';
+import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AsistenciaService } from '../../../core/services/asistencia.service';
@@ -119,7 +120,7 @@ export class MarcadoComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         setTimeout(() => {
-          this.mensajeError = err.error?.message || 'Error al registrar asistencia.';
+          this.mensajeError = mensajeError(err, 'Error al registrar asistencia.');
           this.estado = 'ERROR';
           this.cdr.detectChanges();
           this.resetTimeout = setTimeout(() => {

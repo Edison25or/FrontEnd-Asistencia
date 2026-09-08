@@ -137,15 +137,15 @@
           <tr *ngFor="let t of trabajadoresFiltrados">
             <td class="td-trab">
               <div class="trab-n">{{ t.trabajadorNombre }}</div>
-              <div class="trab-p">{{ t.puestoNombre }} — {{ t.areaNombre }}</div>
+              <div class="trab-p">{{ t.puestoNombre }} - {{ t.areaNombre }}</div>
             </td>
 
             <ng-container *ngFor="let col of columnasTurno">
               <td class="td-num" [class.td-noche]="col.esFeriado">
-                {{ celda(t, col)?.hNormales || '—' }}
+                {{ celda(t, col)?.hNormales || '-' }}
               </td>
               <td class="td-extra" [class.td-noche]="col.esFeriado">
-                {{ celda(t, col)?.hExtra || '—' }}
+                {{ celda(t, col)?.hExtra || '-' }}
               </td>
             </ng-container>
 
@@ -155,22 +155,22 @@
 
             <td class="td-num">
               <span class="chip-falta" *ngIf="t.diasFalta > 0">{{ t.diasFalta }}</span>
-              <span *ngIf="t.diasFalta === 0">—</span>
+              <span *ngIf="t.diasFalta === 0">-</span>
             </td>
             <td class="td-num">
               <span class="chip-perm" *ngIf="t.diasPermiso > 0">{{ t.diasPermiso }}</span>
-              <span *ngIf="t.diasPermiso === 0">—</span>
+              <span *ngIf="t.diasPermiso === 0">-</span>
             </td>
             <td class="td-num">
               <span class="chip-bono" *ngIf="t.diasFaltaJustificada > 0">
                 {{ t.diasFaltaJustificada }}
               </span>
-              <span *ngIf="t.diasFaltaJustificada === 0">—</span>
+              <span *ngIf="t.diasFaltaJustificada === 0">-</span>
             </td>
 
             <td class="td-num">{{ formatMin(t.minTotalTardanza) }}</td>
 
-            <td class="th-desc">{{ t.observaciones || '—' }}</td>
+            <td class="th-desc">{{ t.observaciones || '-' }}</td>
           </tr>
 
           <tr *ngIf="trabajadoresFiltrados.length === 0">

@@ -4,7 +4,14 @@
   <div class="prog-header">
     <div>
       <h2 class="prog-titulo">Programación Semanal</h2>
-      <p class="prog-subtitulo">Arrastra un grupo desde el panel derecho hacia un esquema de horario.</p>
+      <p class="prog-subtitulo">
+        Arrastra un grupo desde el panel derecho hacia un esquema de horario.
+        <!-- Sin esta marca, el Jefe podría creer que programa a toda la
+             empresa y que faltan grupos por cargar. -->
+        @if (rolUsuario === 'ROLE_JEFE' && areaPropia) {
+          <span class="prog-alcance">Grupos de {{ areaPropia }}</span>
+        }
+      </p>
     </div>
     <!-- Selector de semana + botón confirmar (punto 5) -->
     <div class="semana-bar">
@@ -15,10 +22,29 @@
           <option [value]="s.value">{{ s.label }}</option>
         }
       </select>
-      <button class="btn-confirmar" (click)="iniciarConfirmacion()" [disabled]="!semanaSeleccionada || isProcesando">
+      <!--
+        El botón se deshabilita en semanas ya vencidas. El resto de la
+        pantalla ya bloqueaba el arrastre con esSemanaPassada(), pero el
+        botón seguía activo: al pulsarlo el servidor rechazaba, y el
+        usuario no sabía si le faltaba permiso o si el sistema falló.
+
+        Confirmar una semana pasada generaría pre-registros de jornadas
+        que ya ocurrieron, sin marcación posible, que el cierre diario
+        convertiría en faltas injustificadas.
+      -->
+      <button class="btn-confirmar"
+              (click)="iniciarConfirmacion()"
+              [disabled]="!semanaSeleccionada || isProcesando || esSemanaPassada()"
+              [title]="esSemanaPassada()
+                       ? 'La semana ya terminó y no puede confirmarse'
+                       : 'Genera los registros de asistencia de la semana'">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         Confirmar semana
       </button>
+
+      @if (esSemanaPassada() && semanaSeleccionada) {
+        <span class="prog-vencida">Semana cerrada · solo consulta</span>
+      }
     </div>
   </div>
 
@@ -79,7 +105,7 @@
                        [class.dia-sab]="d.diaSemana === 6"
                        [class.dia-dom]="d.diaSemana === 7">
                     <span class="dia-abrev">{{ DIAS[d.diaSemana - 1] }}</span>
-                    <span class="dia-rango">{{ d.horaEntrada }} – {{ d.horaSalida }}</span>
+                    <span class="dia-rango">{{ d.horaEntrada }} - {{ d.horaSalida }}</span>
                     @if (d.minutosRefrigerio) {
                       <span class="dia-refri">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
@@ -203,7 +229,7 @@
         </div>
         @if (resultadoBulk.omitidos > 0) {
           <div class="bulk-warn">
-            ⚠ {{ resultadoBulk.omitidos }} omitido{{ resultadoBulk.omitidos !== 1 ? 's' : '' }} — ya tenían programación esa semana.
+            ⚠ {{ resultadoBulk.omitidos }} omitido{{ resultadoBulk.omitidos !== 1 ? 's' : '' }} - ya tenían programación esa semana.
           </div>
         }
       </div>
@@ -274,7 +300,7 @@
               <div class="m-av">{{ t.nombreCompleto?.charAt(0) }}</div>
               <div class="m-data">
                 <span class="m-nombre">{{ t.nombreCompleto }}</span>
-                <span class="m-puesto">{{ t.puestoNombre }} — {{ t.areaNombre }}</span>
+                <span class="m-puesto">{{ t.puestoNombre }} - {{ t.areaNombre }}</span>
               </div>
               <span class="m-doc">{{ t.nroDocumento }}</span>
             </div>

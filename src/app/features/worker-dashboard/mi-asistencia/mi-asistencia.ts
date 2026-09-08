@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FechaPePipe } from '../../../shared/fecha-pe.pipe';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { AuthService } from '../../../core/services/auth';
 
@@ -8,7 +9,7 @@ type Rango = 'SEMANA' | 'QUINCENA' | 'MES' | 'MES_ANT' | 'DOS_MESES';
 @Component({
   selector: 'app-mi-asistencia',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FechaPePipe],
   templateUrl: './mi-asistencia.html',
   styleUrl: './mi-asistencia.css'
 })
@@ -45,7 +46,7 @@ export class MiAsistenciaComponent implements OnInit {
     this.reporteService.getReporte({
       fechaInicio: inicio,
       fechaFin: fin
-      // No envía idTrabajador — el backend lo fuerza al usuario autenticado
+      // No envía idTrabajador - el backend lo fuerza al usuario autenticado
     }).subscribe({
       next: (data) => {
         this.registros = this.filtrarRegistros(data);
@@ -116,25 +117,78 @@ export class MiAsistenciaComponent implements OnInit {
     }
   }
 
-  getEstadoClass(estado: string): string {
-    switch ((estado || '').toUpperCase()) {
-      case 'A_TIEMPO':    return 'estado-ok';
-      case 'TARDE':       return 'estado-tarde';
-      case 'FALTA':       return 'estado-falta';
-      case 'JUSTIFICADO': return 'estado-justificado';
-      case 'PENDIENTE':   return 'estado-pendiente';
-      default:            return '';
+  /**
+   * Clasifica la jornada a partir del tipo y los minutos de tardanza.
+   *
+   * Antes se leía el campo `estado`, comparándolo contra 'A_TIEMPO',
+   * 'TARDE' y 'FALTA'. Ese campo ya no contiene esos valores: hoy lleva
+   * el ciclo de vida del registro (PENDIENTE, MARCADO, CALCULADO,
+   * REVISADO, CONSOLIDADO), de modo que ninguna comparación acertaba y
+   * el trabajador veía su historial sin estado.
+   *
+   * Es el mismo criterio que aplican Asistencias del Día y el Reporte,
+   * para que las tres pantallas no puedan contradecirse.
+   */
+  private estadoJornada(r: any): string {
+    if (r.tipo === 'FALTA_INJUSTIFICADA')   return 'FALTA';
+    if (r.permisoAsociado)                  return 'PERMISO';
+    if (r.faltaJustificadaAsociada)         return 'JUSTIFICADA';
+
+    // Sin marcación no es "a tiempo": es una jornada que aún no ocurrió.
+    if (!r.horaEntrada) {
+      // Una jornada sin marcar puede estar en tres situaciones, y las
+      // tres deben decir algo. Devolver el tipo tal cual dejaba
+      // 'PROGRAMADA' sin etiqueta, que es como salir en blanco: el
+      // trabajador veía la fila vacía sin saber si le contaba como falta.
+      if (r.estado === 'PENDIENTE') return 'PENDIENTE';
+      if (r.tipo === 'PROGRAMADA')  return 'SIN_MARCAR';
+      return r.tipo || 'SIN_MARCAR';
     }
+    if (r.tipo === 'MARCACION_INCOMPLETA')     return 'INCOMPLETA';
+    if (r.tipo === 'HORA_EXTRA_NO_PROGRAMADA') return 'HORA_EXTRA';
+    if (r.tipo === 'NO_PROGRAMADA')            return 'NO_PROGRAMADA';
+    if (r.tipo === 'CONTINGENCIA')             return 'CONTINGENCIA';
+
+    return (r.minTardanza ?? 0) > 0 ? 'TARDE' : 'A_TIEMPO';
   }
 
-  getEstadoLabel(estado: string): string {
-    switch ((estado || '').toUpperCase()) {
-      case 'A_TIEMPO':    return 'A tiempo';
-      case 'TARDE':       return 'Tardanza';
-      case 'FALTA':       return 'Falta';
-      case 'JUSTIFICADO': return 'Justificado';
-      case 'PENDIENTE':   return 'Programado';
-      default:            return estado;
-    }
+  getEstadoClass(r: any): string {
+    return {
+      A_TIEMPO:      'estado-ok',
+      TARDE:         'estado-tarde',
+      FALTA:         'estado-falta',
+      PERMISO:       'estado-justificado',
+      JUSTIFICADA:   'estado-justificado',
+      CONTINGENCIA:  'estado-justificado',
+      INCOMPLETA:    'estado-tarde',
+      HORA_EXTRA:    'estado-tarde',
+      NO_PROGRAMADA: 'estado-tarde',
+      PENDIENTE:     'estado-pendiente',
+    }[this.estadoJornada(r)] ?? '';
   }
+
+  getEstadoLabel(r: any): string {
+    return {
+      A_TIEMPO:      'A tiempo',
+      TARDE:         'Tardanza',
+      FALTA:         'Falta',
+      PERMISO:       'Permiso',
+      JUSTIFICADA:   'Justificada',
+      INCOMPLETA:    'Sin salida',
+      HORA_EXTRA:    'Hora extra',
+      NO_PROGRAMADA: 'No programada',
+      CONTINGENCIA:  'Registro manual',
+      PENDIENTE:     'Programado',
+      SIN_MARCAR:    'Sin marcar',
+    }[this.estadoJornada(r)] ?? this.estadoJornada(r);
+  }
+
+  /** Día de la semana, al mediodía para que la zona no lo desplace. */
+  diaSemana(iso: string): string {
+    if (!iso) return '';
+    const d = new Date(`${String(iso).substring(0, 10)}T12:00:00`);
+    return ['Domingo', 'Lunes', 'Martes', 'Miércoles',
+            'Jueves', 'Viernes', 'Sábado'][d.getDay()];
+  }
+
 }

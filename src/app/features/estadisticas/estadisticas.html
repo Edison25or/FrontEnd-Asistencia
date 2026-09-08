@@ -21,14 +21,24 @@
       <input type="date" class="input-fecha" [(ngModel)]="hasta"
              (ngModelChange)="rango = 'custom'">
 
-      <!-- El Jefe queda restringido a su área, así que no se le ofrece el filtro. -->
-      @if (!esJefe()) {
+      <!--
+        El Jefe y el Supervisor quedan restringidos a su área, así que no
+        se les ofrece el filtro: elegir otra no cambiaría el resultado,
+        porque el servidor descarta el valor recibido.
+      -->
+      @if (!restringidoASuArea()) {
         <select class="input-area" [(ngModel)]="idArea">
           <option [ngValue]="null">Todas las áreas</option>
           @for (a of areas; track a.idArea) {
             <option [ngValue]="a.idArea">{{ a.area }}</option>
           }
         </select>
+      } @else {
+        <!-- Sin este aviso, el usuario podría leer las cifras como si
+             fueran de toda la empresa. -->
+        <span class="alcance-area">
+          Datos de {{ datos?.areaNombre || 'tu área' }}
+        </span>
       }
 
       <button class="btn-aplicar" [disabled]="isLoading" (click)="cargar()">
@@ -293,7 +303,7 @@
               <tr>
                 <td>
                   <div class="celda-nombre">{{ f.nombre }}</div>
-                  <div class="celda-nota">{{ f.puesto }} — {{ f.area }}</div>
+                  <div class="celda-nota">{{ f.puesto }} - {{ f.area }}</div>
                   <div class="barra-inline barra-alerta">
                     <span [style.width.%]="proporcion(f.saldoMinutos, maxSaldo)"></span>
                   </div>

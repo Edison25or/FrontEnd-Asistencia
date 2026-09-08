@@ -68,4 +68,12 @@ export class MiConsolidadoComponent implements OnInit {
   getConsolidadoTrabajador(idQuincena: number, idTrabajador: number) {
     return this.consolidadoService.getConsolidadoTrabajador(idQuincena, idTrabajador);
   }
+
+  /** Minutos a hh:mm, el mismo formato que usa el resto del sistema. */
+  formatMin(min: number | null | undefined): string {
+    if (min == null || min === 0) return '00:00';
+    const abs = Math.abs(min);
+    return String(Math.floor(abs / 60)).padStart(2, '0') + ':'
+         + String(abs % 60).padStart(2, '0');
+  }
 }

@@ -163,3 +163,29 @@
 .badge-permiso { background: #dbeafe; color: #1e40af; }
 .badge-extra   { background: #ede9fe; color: #6d28d9; }
 .badge-neutro  { background: #f1f5f9; color: #64748b; }
+
+
+/* ── Área fija para el rol acotado ───────────────────────── */
+/* Ocupa el lugar del selector, con el mismo alto para que la fila de
+   filtros no se desalinee. */
+.area-fija {
+  display: flex;
+  align-items: center;
+  padding: 10px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+
+/* ── Aviso del buscador de trabajador ────────────────────── */
+.aviso-trab {
+  display: block;
+  margin-top: 6px;
+  font-size: .78rem;
+  color: #b45309;
+  line-height: 1.45;
+}

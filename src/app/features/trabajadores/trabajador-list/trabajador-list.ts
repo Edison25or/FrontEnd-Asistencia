@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -445,7 +446,7 @@ procesarCese() {
           this.cerrarModalCese();
           this.cargarTrabajadores();
         } else {
-          const mensaje = err.error?.message || 'Error al cesar al trabajador.';
+          const mensaje = mensajeError(err, 'Error al cesar al trabajador.');
           alert(mensaje);
           console.error('Error al cesar al trabajador', err);
           this.cdr.detectChanges();
@@ -600,7 +601,7 @@ procesarCese() {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.resetError        = err.error?.message || 'No se pudo resetear la contraseña.';
+        this.resetError        = mensajeError(err, 'No se pudo resetear la contraseña.');
         this.isProcesandoReset = false;
         this.cdr.detectChanges();
       }

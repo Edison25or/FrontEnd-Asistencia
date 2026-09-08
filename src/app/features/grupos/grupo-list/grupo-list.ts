@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { GrupoService } from '../../../core/services/grupo.service';
@@ -73,12 +74,31 @@ export class GrupoListComponent implements OnInit {
     forkJoin({
       grupos:       this.grupoService.getAll(),
       trabajadores: this.trabajadorService.getTrabajadores(0, 500),
-      areas:        this.maestrosService.getAreas()
+      // getAreas() apunta a /api/maestros/admin/areas, ruta exclusiva del
+      // Superadministrador: el Jefe recibia un rechazo y el desplegable
+      // quedaba vacio, de modo que no podia crear ningun grupo.
+      //
+      // getAreasActivas() usa /api/maestros/areas, que es publica y
+      // devuelve solo las vigentes, que es justo lo que corresponde
+      // ofrecer al crear.
+      areas:        this.maestrosService.getAreasActivas()
     }).subscribe({
       next: (res: any) => {
         this.grupos       = res.grupos;
         this.trabajadores = res.trabajadores.content || res.trabajadores;
         this.areas        = res.areas;
+
+        // El Jefe conforma los grupos de SU area (CU-13, RN-01), asi que
+        // el desplegable se reduce a ella. Sin esto podria crear un grupo
+        // en un area sobre la que no tiene responsabilidad.
+        if (this.rolUsuario === 'ROLE_JEFE') {
+          const idPropio = this.authService.getIdTrabajador();
+          const yo = this.trabajadores.find((t: any) =>
+            String(t.idTrabajador) === String(idPropio));
+          if (yo?.areaNombre) {
+            this.areas = this.areas.filter((a: any) => a.area === yo.areaNombre);
+          }
+        }
         this.isLoading    = false;
         this.cdr.detectChanges();
       },
@@ -111,11 +131,19 @@ export class GrupoListComponent implements OnInit {
     const idsOcupados    = this.getIdsOcupados(excluirGrupoId);
     const idArea         = this.grupoForm.get('idArea')?.value;
 
-    this.panelEnGrupo     = this.trabajadores.filter(t => idsEnGrupo.has(t.idTrabajador));
-    this.panelDisponibles = this.trabajadores.filter(t =>
+    this.panelEnGrupo = this.trabajadores.filter(t => idsEnGrupo.has(t.idTrabajador));
+
+    // Sin área elegida NO se ofrece a nadie.
+    //
+    // La condición era `!idArea || areaDe(t) === idArea`, de modo que
+    // mientras no se eligiera un área aparecía la plantilla completa,
+    // incluidos trabajadores de Administración y Comercial. Al guardar,
+    // el servidor los rechazaba por RN-20 y el usuario descubría el
+    // problema después de haber armado el grupo entero.
+    this.panelDisponibles = !idArea ? [] : this.trabajadores.filter(t =>
       !idsEnGrupo.has(t.idTrabajador)
       && !idsOcupados.has(t.idTrabajador)
-      && (!idArea || this.areaDe(t) === idArea)
+      && this.areaDe(t) === Number(idArea)
     );
     this.cdr.detectChanges();
   }
@@ -131,9 +159,11 @@ export class GrupoListComponent implements OnInit {
    */
   onAreaChange() {
     const idArea = this.grupoForm.get('idArea')?.value;
-    const sobran = this.panelEnGrupo.filter(t => this.areaDe(t) !== idArea);
+    // El valor del selector llega como cadena; sin convertirlo, la
+    // comparación estricta fallaría siempre.
+    const sobran = this.panelEnGrupo.filter(t => this.areaDe(t) !== Number(idArea));
     if (sobran.length > 0) {
-      this.panelEnGrupo = this.panelEnGrupo.filter(t => this.areaDe(t) === idArea);
+      this.panelEnGrupo = this.panelEnGrupo.filter(t => this.areaDe(t) === Number(idArea));
     }
     const ids = new Set<number>(this.panelEnGrupo.map(t => t.idTrabajador));
     this.construirPaneles(ids, this.grupoEditandoId);
@@ -219,7 +249,7 @@ export class GrupoListComponent implements OnInit {
         this.cargarTodo();
       },
       error: (err: any) => {
-        this.errorModal   = err.error?.message || 'Error al guardar.';
+        this.errorModal   = mensajeError(err, 'Error al guardar.');
         this.isProcesando = false;
         this.cdr.detectChanges();
       }
@@ -247,13 +277,21 @@ export class GrupoListComponent implements OnInit {
       error: (err: any) => {
         this.isProcesando = false;
         this.cdr.detectChanges();
-        alert(err.error?.message || 'No se pudo eliminar.');
+        alert(mensajeError(err, 'No se pudo eliminar.'));
       }
     });
   }
 
   // ── Helpers ───────────────────────────────────────────────
   esSuperAdmin()     { return this.rolUsuario === 'ROLE_SUPERADMIN'; }
+  /**
+   * Quien puede crear y modificar grupos de trabajo.
+   *
+   * El Jefe SÍ figura aquí, a diferencia de los esquemas de horario: CU-13
+   * le asigna la conformación de los grupos de su área. Un grupo agrupa a
+   * su personal y no altera el cálculo de horas de nadie más, mientras que
+   * un esquema rige el de toda la empresa.
+   */
   esAdmin()          { return this.rolUsuario === 'ROLE_ADMIN' || this.rolUsuario === 'ROLE_JEFE' || this.esSuperAdmin(); }
   esSoloSupervisor() { return this.rolUsuario === 'ROLE_SUPERVISOR' && !this.esAdmin(); }
   getPreviewMiembros(trabajadores: any[]): any[] { return trabajadores?.slice(0, 5) || []; }

@@ -11,12 +11,25 @@
           <svg [class.colapsado]="!secciones.asistencia" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="nav-items-container" [class.abierto]="secciones.asistencia">
-          <ul>              <li>
-                <a routerLink="/dashboard/estadisticas" routerLinkActive="active">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                  Estadísticas
-                </a>
-              </li>
+            <!--
+              Estadísticas queda restringida al área administrativa, que es
+              lo que declara CU-22: Administrador y Superadministrador.
+
+              El Jefe y el Supervisor quedan fuera. La restricción del Jefe
+              es por ahora SOLO de la interfaz: el servidor sigue
+              admitiéndolo, acotado a su área, de modo que reabrirle el
+              acceso no exige tocar el backend ni volver a compilar.
+            -->
+            <ul>
+            @if (userRole === 'Administrador'
+              || userRole === 'Súper Administrador') {
+              <li>
+                  <a routerLink="/dashboard/estadisticas" routerLinkActive="active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Estadísticas
+                  </a>
+                </li>
+            }
 
             <li>
               <a routerLink="/dashboard/asistencias" routerLinkActive="active">
@@ -33,12 +46,15 @@
                 </a>
               </li>
             }
-            <li>
-              <a routerLink="/dashboard/reporte" routerLinkActive="active">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                Reporte de Asistencia
-              </a>
-            </li>
+            <!-- El reporte histórico es de CU-21. El Supervisor consulta la jornada en curso, no el historial. -->
+            @if (userRole === 'Administrador' || userRole === 'Súper Administrador' || userRole === 'Jefe') {
+              <li>
+                <a routerLink="/dashboard/reporte" routerLinkActive="active">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  Reporte de Asistencia
+                </a>
+              </li>
+            }
             @if (userRole === 'Administrador' || userRole === 'Súper Administrador' || userRole === 'Jefe') {
               <li>
                 <a routerLink="/dashboard/ausencias" routerLinkActive="active">
@@ -79,44 +95,69 @@
                 Trabajadores
               </a>
             </li>
-            <li>
-              <a routerLink="/dashboard/carnets" routerLinkActive="active">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                Carnés
-              </a>
-            </li>
+            <!--
+              Los carnés son competencia del área administrativa (CU-11):
+              se emiten al registrar al trabajador y se reponen por pérdida
+              o daño. El Jefe y el Supervisor no intervienen en eso.
+            -->
+            @if (userRole === 'Administrador' || userRole === 'Súper Administrador') {
+              <li>
+                <a routerLink="/dashboard/carnets" routerLinkActive="active">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  Carnés
+                </a>
+              </li>
+            }
           </ul>
         </div>
       </div>
 
-      <div class="nav-group">
-        <button class="nav-separador" (click)="toggleSeccion('horarios')">
-          <span>HORARIOS</span>
-          <svg [class.colapsado]="!secciones.horarios" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="nav-items-container" [class.abierto]="secciones.horarios">
-          <ul>
-            <li>
-              <a routerLink="/dashboard/esquemas-horario" routerLinkActive="active">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Esquemas de Horario
-              </a>
-            </li>
-            <li>
-              <a routerLink="/dashboard/grupos" routerLinkActive="active">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Grupos de Trabajo
-              </a>
-            </li>
-            <li>
-              <a routerLink="/dashboard/programacion" routerLinkActive="active">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
-                Programación Semanal
-              </a>
-            </li>
-          </ul>
+      <!--
+        La sección entera se oculta cuando ninguna de sus tres opciones
+        corresponde al rol. Antes el encabezado HORARIOS seguía visible
+        sobre un espacio vacío, lo que sugería que algo no había cargado.
+      -->
+      @if (userRole === 'Administrador'
+        || userRole === 'Súper Administrador'
+        || userRole === 'Jefe') {
+        <div class="nav-group">
+          <button class="nav-separador" (click)="toggleSeccion('horarios')">
+            <span>HORARIOS</span>
+            <svg [class.colapsado]="!secciones.horarios" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="nav-items-container" [class.abierto]="secciones.horarios">
+            <ul>
+              <!-- Los esquemas son de CU-12. El Supervisor no define ni asigna horarios. -->
+              @if (userRole === 'Administrador' || userRole === 'Súper Administrador' || userRole === 'Jefe') {
+                <li>
+                  <a routerLink="/dashboard/esquemas-horario" routerLinkActive="active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Esquemas de Horario
+                  </a>
+                </li>
+              }
+              <!-- Los grupos son de CU-13, competencia del Jefe. -->
+              @if (userRole === 'Administrador' || userRole === 'Súper Administrador' || userRole === 'Jefe') {
+                <li>
+                  <a routerLink="/dashboard/grupos" routerLinkActive="active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Grupos de Trabajo
+                  </a>
+                </li>
+              }
+              <!-- La programación semanal es de CU-14. -->
+              @if (userRole === 'Administrador' || userRole === 'Súper Administrador' || userRole === 'Jefe') {
+                <li>
+                  <a routerLink="/dashboard/programacion" routerLinkActive="active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
+                    Programación Semanal
+                  </a>
+                </li>
+              }
+            </ul>
+          </div>
         </div>
-      </div>
+      }
 
       @if (userRole === 'Súper Administrador') {
         <div class="nav-group">
@@ -172,7 +213,7 @@
         @if (cargando) {
           <div class="user-info">
             <span class="user-name" style="opacity:0.4">Cargando...</span>
-            <span class="user-role" style="opacity:0.4">—</span>
+            <span class="user-role" style="opacity:0.4">-</span>
           </div>
           <div class="user-avatar" style="opacity:0.4">?</div>
         } @else {

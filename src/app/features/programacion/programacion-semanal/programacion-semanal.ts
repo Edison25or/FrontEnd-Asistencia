@@ -1,10 +1,12 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProgramacionService } from '../../../core/services/programacion.service';
 import { GrupoService } from '../../../core/services/grupo.service';
 import { EsquemaHorarioService } from '../../../core/services/esquema-horario.service';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
+import { AuthService } from '../../../core/services/auth';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -17,6 +19,7 @@ import { forkJoin } from 'rxjs';
 export class ProgramacionSemanalComponent implements OnInit {
 
   private programacionService = inject(ProgramacionService);
+  private authService         = inject(AuthService);
   private grupoService        = inject(GrupoService);
   private esquemaService      = inject(EsquemaHorarioService);
   private trabajadorService   = inject(TrabajadorService);
@@ -29,6 +32,10 @@ export class ProgramacionSemanalComponent implements OnInit {
 
   semanaSeleccionada = '';
   isLoading          = false;
+
+  /** Rol y área del usuario, para acotar el alcance del Jefe. */
+  rolUsuario = '';
+  areaPropia = '';
   isProcesando       = false;
   errorGlobal        = '';
 
@@ -77,6 +84,30 @@ export class ProgramacionSemanalComponent implements OnInit {
         this.grupos       = res.grupos;
         this.esquemas     = res.esquemas;
         this.trabajadores = res.trabajadores.content || res.trabajadores;
+
+        // ============================================================
+        // ALCANCE DEL JEFE
+        // ============================================================
+        // El Jefe asigna los horarios de SU area (CU-14, RN-01). Sin este
+        // filtro veia los grupos de Calidad y Limpieza, podia moverlos de
+        // esquema, y al confirmar la semana recibia un aviso sobre
+        // personal de Administracion y Comercial que no le corresponde.
+        this.rolUsuario = this.authService.getRolUsuario() || '';
+
+        if (this.rolUsuario === 'ROLE_JEFE') {
+          const idPropio = this.authService.getIdTrabajador();
+          const yo = this.trabajadores.find((t: any) =>
+            String(t.idTrabajador) === String(idPropio));
+          this.areaPropia = yo?.areaNombre ?? '';
+
+          if (this.areaPropia) {
+            this.grupos = this.grupos.filter((g: any) =>
+              g.areaNombre === this.areaPropia);
+            this.trabajadores = this.trabajadores.filter((t: any) =>
+              t.areaNombre === this.areaPropia);
+          }
+        }
+
         this.isLoading    = false;
         this.cargarProgramaciones();
       },
@@ -112,7 +143,7 @@ export class ProgramacionSemanalComponent implements OnInit {
   getGruposDeEsquema(idEsquema: number): any[] {
     const progs = this.getProgramacionesByEsquema(idEsquema);
 
-    // Agrupar por grupoIdSnapshot — cada grupo único forma una tarjeta
+    // Agrupar por grupoIdSnapshot - cada grupo único forma una tarjeta
     const mapaGrupos = new Map<string, any>();
     for (const p of progs) {
       const key = p.grupoIdSnapshot != null
@@ -241,7 +272,7 @@ export class ProgramacionSemanalComponent implements OnInit {
       },
       error: (err: any) => {
         this.isProcesando = false;
-        this.mostrarError(err.error?.message || 'Error al asignar.');
+        this.mostrarError(mensajeError(err, 'Error al asignar.'));
       }
     });
   }
@@ -301,7 +332,7 @@ export class ProgramacionSemanalComponent implements OnInit {
           // por ejemplo, la rechaza el backend y el usuario no veia nada.
           this.isProcesando = false;
           this.mostrarModalEliminarGrupo = false;
-          this.mostrarError(err.error?.message || 'No se pudo quitar el grupo del esquema.');
+          this.mostrarError(mensajeError(err, 'No se pudo quitar el grupo del esquema.'));
           this.cdr.detectChanges();
         }
       });
@@ -354,7 +385,7 @@ export class ProgramacionSemanalComponent implements OnInit {
       },
       error: (err: any) => {
         this.isProcesando = false;
-        this.mostrarError(err.error?.message || 'Error al confirmar la semana.');
+        this.mostrarError(mensajeError(err, 'Error al confirmar la semana.'));
       }
     });
   }

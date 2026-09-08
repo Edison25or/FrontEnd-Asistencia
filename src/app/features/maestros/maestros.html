@@ -164,7 +164,7 @@
               <td class="col-id">{{ p.idPuesto }}</td>
               <td class="col-nombre">{{ p.puesto }}</td>
               <td><span class="chip-area">{{ p.areaNombre }}</span></td>
-              <td class="col-desc">{{ p.descripcionPuesto || '—' }}</td>
+              <td class="col-desc">{{ p.descripcionPuesto || '-' }}</td>
               <td>
                 <span class="badge" [class.badge-activo]="p.activo" [class.badge-inactivo]="!p.activo">
                   {{ p.activo ? 'Activo' : 'Inactivo' }}
@@ -366,9 +366,48 @@
             <textarea formControlName="descripcion" class="input-textarea"
                       placeholder="Cuándo se usa este tipo de ausencia..." maxlength="200" rows="3"></textarea>
           </div>
+          <!--
+            El aviso anterior decía que el mismo catálogo servía para
+            ambos casos y que solo cambiaba dónde se registran. Dejó de
+            ser cierto: el tipo declara ahora a cuál corresponde, y sin
+            estas casillas el desplegable de una de las dos pantallas
+            quedaría sin la opción.
+          -->
+          <div class="campo">
+            <label>¿Dónde puede usarse este tipo?</label>
+
+            <label class="check-tipo">
+              <input type="checkbox" formControlName="aplicaPermiso">
+              <span>
+                <strong>Permiso</strong>
+                <em>Ausencia prevista, solicitada con anticipación.
+                    Por ejemplo vacaciones o una capacitación.</em>
+              </span>
+            </label>
+
+            <label class="check-tipo">
+              <input type="checkbox" formControlName="aplicaFaltaJustificada">
+              <span>
+                <strong>Falta justificada</strong>
+                <em>Ausencia imprevista con motivo válido, que se justifica
+                    después. Por ejemplo un fallecimiento familiar.</em>
+              </span>
+            </label>
+
+            @if (!tipoAusenciaForm.get('aplicaPermiso')?.value &&
+                 !tipoAusenciaForm.get('aplicaFaltaJustificada')?.value) {
+              <span class="campo-error">
+                Marca al menos una. Un tipo sin ninguna no aparecería en
+                ninguna pantalla y no podría usarse.
+              </span>
+            }
+          </div>
+
           <p class="toggle-aviso">
-            El mismo catálogo sirve para permisos planificados y para faltas
-            justificadas. Lo que las distingue es dónde se registran, no el tipo.
+            Muchos tipos admiten las dos. Una operación programada es un permiso
+            por descanso médico, mientras que la misma dolencia de aparición
+            súbita es una falta justificada: el hecho es el mismo y lo que cambia
+            es si se supo con antelación.
           </p>
         </form>
       }
@@ -397,7 +436,12 @@
 
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="cerrarModal()" [disabled]="guardando">Cancelar</button>
-        <button class="btn-guardar" (click)="guardar()" [disabled]="guardando">
+        <!--
+          Se bloquea si el tipo no aplica a ninguna de las dos pantallas.
+          El backend también lo rechaza, pero avisar aquí evita el viaje.
+        -->
+        <button class="btn-guardar" (click)="guardar()"
+                [disabled]="guardando || tipoAusenciaSinDestino">
           {{ guardando ? 'Guardando...' : (modalMode === 'crear' ? 'Crear' : 'Guardar cambios') }}
         </button>
       </div>

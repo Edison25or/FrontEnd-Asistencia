@@ -5,6 +5,20 @@
     <div>
       <h2 class="esquema-titulo">Esquemas de Horario</h2>
       <p class="esquema-subtitulo">Define los horarios variables por día para cada grupo de trabajo</p>
+
+      <!--
+        Aviso para el Jefe: sin él, una pantalla sin botones parece rota o
+        a medio cargar. Decirle por qué solo consulta, y dónde sí actúa,
+        resuelve la duda antes de que aparezca.
+      -->
+      @if (soloLectura()) {
+        <p class="aviso-lectura">
+          Solo consulta. Los esquemas los define el área administrativa, ya
+          que sus tolerancias y minutos netos rigen el cálculo de horas de
+          toda la empresa. Tú los asignas a tus grupos desde
+          <strong>Programación Semanal</strong>.
+        </p>
+      }
     </div>
     @if (esAdmin()) {
       <button class="btn-nuevo" (click)="abrirModalNuevo()">
@@ -58,7 +72,7 @@
             </div>
           </div>
 
-          <!-- Mini tabla — Sáb primero, con columna de refrigerio -->
+          <!-- Mini tabla - Sáb primero, con columna de refrigerio -->
           <table class="mini-tabla">
             <thead>
               <tr>
@@ -69,15 +83,15 @@
               @for (d of g.versionActiva?.horariosDia; track d.diaSemana) {
                 <tr [class.descanso]="d.esDescanso">
                   <td class="dia-nombre">{{ d.nombreDia }}</td>
-                  <td>{{ d.esDescanso ? '—' : d.horaEntrada }}</td>
-                  <td>{{ d.esDescanso ? '—' : d.horaSalida }}</td>
-                  <td>{{ d.esDescanso ? '—' : d.horasNetasFormato }}</td>
+                  <td>{{ d.esDescanso ? '-' : d.horaEntrada }}</td>
+                  <td>{{ d.esDescanso ? '-' : d.horaSalida }}</td>
+                  <td>{{ d.esDescanso ? '-' : d.horasNetasFormato }}</td>
                   <td class="td-refri">
                     @if (!d.esDescanso && d.minutosRefrigerio) {
                       <span class="chip-refri">🍽 {{ d.minutosRefrigerio }}'</span>
-                    } @else { — }
+                    } @else { - }
                   </td>
-                  <td>{{ d.esDescanso ? '—' : (d.minutosExtraProgramado > 0 ? d.extraFormato : '—') }}</td>
+                  <td>{{ d.esDescanso ? '-' : (d.minutosExtraProgramado > 0 ? d.extraFormato : '-') }}</td>
                 </tr>
               }
             </tbody>
@@ -85,7 +99,7 @@
               <tr>
                 <td colspan="3" class="total-label">Total semanal</td>
                 <td class="total-val">{{ g.versionActiva?.totalHorasNetas }}</td>
-                <td>—</td>
+                <td>-</td>
                 <td class="total-extra">{{ g.versionActiva?.totalHorasExtra }}</td>
               </tr>
             </tfoot>
@@ -269,7 +283,7 @@
     <div class="modal-box modal-esquema" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3>Nueva versión — {{ grupoParaNuevaVersion.grupoNombre }}</h3>
+          <h3>Nueva versión - {{ grupoParaNuevaVersion.grupoNombre }}</h3>
           <span class="modal-sub">v{{ grupoParaNuevaVersion.versionActiva?.version }} actual · La anterior quedará cerrada.</span>
         </div>
         <button class="modal-close" (click)="cerrarModalVersion()">✕</button>
@@ -457,10 +471,10 @@
                     @for (d of v.horariosDia; track d.diaSemana) {
                       <tr [class.descanso]="d.esDescanso">
                         <td class="dia-nombre">{{ d.nombreDia }}</td>
-                        <td>{{ d.esDescanso ? '—' : d.horaEntrada }}</td>
-                        <td>{{ d.esDescanso ? '—' : formatMin(d.minutosRefrigerio) }}</td>
-                        <td>{{ d.esDescanso ? '—' : d.horasNetasFormato }}</td>
-                        <td>{{ d.esDescanso ? '—' : (d.minutosExtraProgramado > 0 ? d.extraFormato : '—') }}</td>
+                        <td>{{ d.esDescanso ? '-' : d.horaEntrada }}</td>
+                        <td>{{ d.esDescanso ? '-' : formatMin(d.minutosRefrigerio) }}</td>
+                        <td>{{ d.esDescanso ? '-' : d.horasNetasFormato }}</td>
+                        <td>{{ d.esDescanso ? '-' : (d.minutosExtraProgramado > 0 ? d.extraFormato : '-') }}</td>
                         <td><strong>{{ d.esDescanso ? 'DESCANSO' : d.horaSalida }}</strong></td>
                       </tr>
                     }

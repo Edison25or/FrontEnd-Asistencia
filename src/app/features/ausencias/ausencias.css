@@ -330,3 +330,19 @@
 }
 .btn-eliminar:hover:not(:disabled) { background: #b91c1c; }
 .btn-eliminar:disabled { opacity: .6; cursor: not-allowed; }
+
+
+/* ── Salida para tipos no habituales ─────────────────────── */
+/* Discreta a propósito: es la excepción, no el camino normal. */
+.check-todos {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  font-size: .78rem;
+  color: #64748b;
+  cursor: pointer;
+  font-weight: 400;
+}
+.check-todos input { accent-color: #8cc63f; cursor: pointer; }
+.ocultos { color: #94a3b8; font-size: .95em; }

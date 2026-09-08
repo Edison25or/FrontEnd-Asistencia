@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { EsquemaHorarioService } from '../../../core/services/esquema-horario.service';
@@ -185,12 +186,12 @@ export class EsquemaHorarioListComponent implements OnInit {
   getHoraSalida(index: number, version = false): string {
     const arr  = version ? this.horariosDiaVersionArray : this.horariosDiaArray;
     const ctrl = arr?.at(index);
-    if (!ctrl || ctrl.get('esDescanso')!.value) return '—';
+    if (!ctrl || ctrl.get('esDescanso')!.value) return '-';
     const entrada = ctrl.get('horaEntrada')!.value;
     const netos   = Number(ctrl.get('minutosNetos')!.value) || 0;
     const refrig  = Number(ctrl.get('minutosRefrigerio')!.value) || 0;
     const extra   = Number(ctrl.get('minutosExtraProgramado')!.value) || 0;
-    if (!entrada || netos === 0) return '—';
+    if (!entrada || netos === 0) return '-';
     const [h, m] = entrada.split(':').map(Number);
     const total  = h * 60 + m + netos + refrig + extra;
     return `${String(Math.floor(total/60)%24).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
@@ -255,7 +256,7 @@ export class EsquemaHorarioListComponent implements OnInit {
     this.service.crear(payload).subscribe({
       next: () => { this.isProcesando = false; this.cerrarModal(); this.cargar(); },
       error: (err: any) => {
-        this.errorModal = err.error?.message || 'Error al guardar.';
+        this.errorModal = mensajeError(err, 'Error al guardar.');
         this.isProcesando = false; this.cdr.detectChanges();
       }
     });
@@ -310,7 +311,7 @@ export class EsquemaHorarioListComponent implements OnInit {
     this.service.crearNuevaVersion(this.grupoParaNuevaVersion.grupoNombre, payload).subscribe({
       next: () => { this.isProcesando = false; this.cerrarModalVersion(); this.cargar(); },
       error: (err: any) => {
-        this.errorModal = err.error?.message || 'Error al crear nueva versión.';
+        this.errorModal = mensajeError(err, 'Error al crear nueva versión.');
         this.isProcesando = false; this.cdr.detectChanges();
       }
     });
@@ -324,7 +325,7 @@ export class EsquemaHorarioListComponent implements OnInit {
     if (!this.esquemaParaToggle) return;
     this.service.toggleActivo(this.esquemaParaToggle.idEsquema).subscribe({
       next: () => { this.cerrarConfirmToggle(); this.cargar(); },
-      error: (err: any) => { alert(err.error?.message || 'Error.'); this.cerrarConfirmToggle(); }
+      error: (err: any) => { alert(mensajeError(err, 'Error.')); this.cerrarConfirmToggle(); }
     });
   }
 
@@ -340,5 +341,23 @@ export class EsquemaHorarioListComponent implements OnInit {
   cerrarDetalle() { this.mostrarDetalle = false; setTimeout(() => { this.grupoDetalle = null; this.cdr.detectChanges(); }, 200); }
 
   esSuperAdmin() { return this.rolUsuario === 'ROLE_SUPERADMIN'; }
-  esAdmin()      { return this.rolUsuario === 'ROLE_ADMIN' || this.rolUsuario === 'ROLE_JEFE' || this.esSuperAdmin(); }
+  /**
+   * Quien puede CREAR y MODIFICAR esquemas de horario (CU-12).
+   *
+   * El Jefe estaba incluido y no le corresponde. La matriz de actividades
+   * asigna "definir los esquemas de la empresa" y "crear una nueva
+   * versión" al área contable, mientras que al Jefe de Área le toca otra
+   * cosa: asignar un esquema a cada grupo para la semana, que es CU-14.
+   *
+   * La distinción importa porque un esquema no pertenece a un área: sus
+   * tolerancias y minutos netos rigen el cálculo de horas de toda la
+   * empresa. Un Jefe que lo modificara alteraría el pago de personal que
+   * no está a su cargo.
+   *
+   * El Jefe conserva la LECTURA, porque programa con ellos.
+   */
+  esAdmin()      { return this.rolUsuario === 'ROLE_ADMIN' || this.esSuperAdmin(); }
+
+  /** Roles que consultan los esquemas sin poder modificarlos. */
+  soloLectura()  { return this.rolUsuario === 'ROLE_JEFE'; }
 }

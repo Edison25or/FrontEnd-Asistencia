@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -152,7 +153,7 @@ export class ParametrosComponent implements OnInit {
         setTimeout(() => { this.okGen = ''; this.cdr.detectChanges(); }, 4000);
       },
       error: (err: any) => {
-        this.errorGen     = err.error?.message || 'Error al guardar.';
+        this.errorGen     = mensajeError(err, 'Error al guardar.');
         this.guardandoGen = false;
         this.cdr.detectChanges();
       }
@@ -173,7 +174,7 @@ export class ParametrosComponent implements OnInit {
         setTimeout(() => { this.okQui = ''; this.cdr.detectChanges(); }, 6000);
       },
       error: (err: any) => {
-        this.errorQui     = err.error?.message || 'Error al guardar.';
+        this.errorQui     = mensajeError(err, 'Error al guardar.');
         this.guardandoQui = false;
         this.cdr.detectChanges();
       }

@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FechaPePipe } from '../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
@@ -143,7 +144,7 @@ export class FeriadosComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.modalError = err.error?.message || 'Error al registrar el feriado.';
+        this.modalError = mensajeError(err, 'Error al registrar el feriado.');
         this.guardando  = false;
         this.cdr.detectChanges();
       }
@@ -184,7 +185,7 @@ export class FeriadosComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorGlobal = err.error?.message || 'Error al dar de baja el feriado.';
+        this.errorGlobal = mensajeError(err, 'Error al dar de baja el feriado.');
         this.guardando   = false;
         this.cerrarModalBaja();
         this.cdr.detectChanges();

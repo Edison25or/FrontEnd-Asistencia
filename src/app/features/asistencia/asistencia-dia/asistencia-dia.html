@@ -92,8 +92,17 @@
           <th style="text-align:center">Fecha</th>
           <th>Trabajador</th>
           <th>Área / Puesto</th>
-          <th style="text-align:center">Entrada</th>
-          <th style="text-align:center">Salida</th>
+          <!--
+            El subtítulo aclara qué es cada línea de la celda: arriba la
+            marcación real, abajo la programada. Sin él, dos horas sueltas
+            una bajo otra no dicen cuál es cuál.
+          -->
+          <th style="text-align:center">
+            Entrada<span class="th-sub2">real / programada</span>
+          </th>
+          <th style="text-align:center">
+            Salida<span class="th-sub2">real / programada</span>
+          </th>
           <th style="text-align:center">Tipo</th>
           <th style="text-align:center">Estado</th>
         </tr>
@@ -113,17 +122,35 @@
             </td>
             <td>
               <div class="trabajador-nombre">{{ a.nombreCompleto }}</div>
-              <div class="trabajador-doc">{{ a.nroDocumento }}</div>
+              <!--
+                El documento solo llega si el rol puede verlo (RN-05). Sin
+                la condición quedaría una línea vacía bajo el nombre.
+              -->
+              @if (a.nroDocumento) {
+                <div class="trabajador-doc">{{ a.nroDocumento }}</div>
+              }
             </td>
             <td>
               <div class="area-nombre">{{ a.areaNombre }}</div>
               <div class="puesto-nombre">{{ a.puestoNombre }}</div>
             </td>
+            <!--
+              Bajo la hora real se muestra la programada. Sin ella, una
+              fila sin marcación no dice nada: no se distingue a quien va
+              tarde de quien todavía no tiene que entrar, y con el turno
+              noche a media mañana hay jornadas que aún no empiezan.
+            -->
             <td style="text-align:center">
-              <span class="hora-badge entrada">{{ a.horaEntrada || '—' }}</span>
+              <span class="hora-badge entrada">{{ a.horaEntrada || '-' }}</span>
+              @if (a.horaEntradaProg) {
+                <div class="hora-prog">{{ a.horaEntradaProg }}</div>
+              }
             </td>
             <td style="text-align:center">
-              <span class="hora-badge salida">{{ a.horaSalida || '—' }}</span>
+              <span class="hora-badge salida">{{ a.horaSalida || '-' }}</span>
+              @if (a.horaSalidaProg) {
+                <div class="hora-prog">{{ a.horaSalidaProg }}</div>
+              }
             </td>
             <td style="text-align:center">
               <span class="tipo-badge" [ngClass]="getTipoBadge(a.tipo)">

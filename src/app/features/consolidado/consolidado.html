@@ -11,40 +11,42 @@
     </div>
   </div>
 
+  <!--
+    Desplegable en lugar del panel lateral de tarjetas. Ese panel se
+    llevaba 240px de ancho y, con diez quincenas, obligaba a desplazarse
+    dentro de él para llegar a la que interesa.
+  -->
+  <div class="q-selector">
+    <label class="q-label" for="selQ">Quincena</label>
+
+    <select id="selQ" class="q-select"
+            [ngModel]="quincenaActual?.idQuincena"
+            (ngModelChange)="seleccionarPorId($event)"
+            [disabled]="isLoadingQ || quincenas.length === 0">
+      <option *ngIf="isLoadingQ" [ngValue]="null">Cargando…</option>
+      <option *ngIf="!isLoadingQ && quincenas.length === 0" [ngValue]="null">
+        Sin quincenas
+      </option>
+      <option *ngFor="let q of quincenas" [ngValue]="q.idQuincena">
+        {{ q.descripcion }}
+        ({{ q.inicio | fechaPe }} - {{ q.fin | fechaPe }})
+        {{ q.estado === 'CERRADA' ? ' · cerrada' : '' }}
+      </option>
+    </select>
+
+    <span class="estado-badge" *ngIf="quincenaActual"
+          [ngClass]="estadoBadge(quincenaActual.estado)">
+      {{ quincenaActual.estado }}
+    </span>
+    <span class="q-pend" *ngIf="quincenaActual && quincenaActual.bloqueantes > 0">
+      {{ quincenaActual.bloqueantes }} pendiente(s)
+    </span>
+    <span class="empty-msg" *ngIf="!isLoadingQ && quincenas.length === 0">
+      Se crean al confirmar la programación semanal.
+    </span>
+  </div>
+
   <div class="cons-layout">
-
-    <!-- ══════════ PANEL DE QUINCENAS ══════════ -->
-    <div class="panel-q">
-      <div class="pq-titulo">Quincenas</div>
-
-      <div class="loading-msg" *ngIf="isLoadingQ">Cargando…</div>
-
-      <div class="pq-lista" *ngIf="!isLoadingQ">
-        <div class="empty-msg" *ngIf="quincenas.length === 0">
-          No hay quincenas registradas. Se crean automáticamente al confirmar
-          la programación semanal.
-        </div>
-
-        <div class="pq-item"
-             *ngFor="let q of quincenas"
-             [class.pq-sel]="quincenaActual?.idQuincena === q.idQuincena"
-             [class.pq-cerrada]="q.estado === 'CERRADA'"
-             (click)="seleccionar(q)">
-
-          <div class="pq-desc">{{ q.descripcion }}</div>
-          <div class="pq-rango">{{ q.inicio | fechaPe }} → {{ q.fin | fechaPe }}</div>
-
-          <div class="pq-pie">
-            <span class="estado-badge" [ngClass]="estadoBadge(q.estado)">
-              {{ q.estado }}
-            </span>
-            <span class="pq-pend" *ngIf="q.bloqueantes > 0">
-              {{ q.bloqueantes }} pendiente(s)
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- ══════════ PANEL DEL CONSOLIDADO ══════════ -->
     <div class="panel-cons">
@@ -69,12 +71,26 @@
           </div>
 
           <div class="qc-acciones">
+            <!--
+              El botón se deshabilita mientras el período sigue en curso.
+              Antes quedaba activo y al pulsarlo el sistema respondía que
+              había registros pendientes, contando jornadas de días que
+              todavía no ocurrían: nada que el usuario pudiera resolver.
+            -->
             <button class="btn-generar"
                     *ngIf="puedeGenerar()"
-                    [disabled]="isProcesando"
+                    [disabled]="isProcesando || quincenaEnCurso"
+                    [title]="quincenaEnCurso
+                             ? 'La quincena aún no termina'
+                             : 'Genera el consolidado y cierra la quincena'"
                     (click)="generarConsolidado()">
               {{ isProcesando ? 'Procesando…' : 'Generar y cerrar quincena' }}
             </button>
+
+            <span class="qc-encurso" *ngIf="quincenaEnCurso && puedeGenerar()">
+              Disponible al cerrar el período, el
+              {{ quincenaActual.fin | fechaPe }}
+            </span>
 
             <button class="btn-reaper"
                     *ngIf="puedeReabrir()"
@@ -159,16 +175,16 @@
 
                   <td class="td-trab">
                     <div class="trab-n">{{ c.trabajadorNombre }}</div>
-                    <div class="trab-p">{{ c.puestoNombre }} — {{ c.areaNombre }}</div>
+                    <div class="trab-p">{{ c.puestoNombre }} - {{ c.areaNombre }}</div>
                   </td>
 
                   <!-- Celdas por turno. Vacío si el trabajador no tuvo ese turno. -->
                   <ng-container *ngFor="let col of columnasTurno">
                     <td class="td-num" [class.td-noche]="col.esFeriado">
-                      {{ celda(c, col)?.hNormales || '—' }}
+                      {{ celda(c, col)?.hNormales || '-' }}
                     </td>
                     <td class="td-extra" [class.td-noche]="col.esFeriado">
-                      {{ celda(c, col)?.hExtra || '—' }}
+                      {{ celda(c, col)?.hExtra || '-' }}
                     </td>
                   </ng-container>
 
@@ -183,17 +199,17 @@
 
                   <td class="td-c">
                     <span class="chip-falta" *ngIf="c.diasFalta > 0">{{ c.diasFalta }}</span>
-                    <span *ngIf="c.diasFalta === 0">—</span>
+                    <span *ngIf="c.diasFalta === 0">-</span>
                   </td>
                   <td class="td-c">
                     <span class="chip-perm" *ngIf="c.diasPermiso > 0">{{ c.diasPermiso }}</span>
-                    <span *ngIf="c.diasPermiso === 0">—</span>
+                    <span *ngIf="c.diasPermiso === 0">-</span>
                   </td>
                   <td class="td-c">
                     <span class="chip-desc" *ngIf="c.diasFaltaJustificada > 0">
                       {{ c.diasFaltaJustificada }}
                     </span>
-                    <span *ngIf="c.diasFaltaJustificada === 0">—</span>
+                    <span *ngIf="c.diasFaltaJustificada === 0">-</span>
                   </td>
 
                   <td class="td-c">

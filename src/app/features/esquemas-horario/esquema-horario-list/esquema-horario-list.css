@@ -257,7 +257,7 @@
 .advertencia { color: #dc2626; font-size: 0.875rem; margin-top: 6px; }
 p { color: #374151; font-size: 0.9rem; }
 
-/* ══ Sprint 3 — nuevos estilos ══════════════════════════════ */
+/* ══ Sprint 3 - nuevos estilos ══════════════════════════════ */
 
 /* Badges de versión */
 .card-badges       { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
@@ -303,7 +303,7 @@ p { color: #374151; font-size: 0.9rem; }
 .version-activa  { border-color: #86efac; }
 .version-cerrada { opacity: .85; }
 
-/* Botón de colapso — ocupa todo el ancho de la cabecera */
+/* Botón de colapso - ocupa todo el ancho de la cabecera */
 .version-toggle-btn {
   width: 100%; display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px; background: transparent; border: none; cursor: pointer;
@@ -503,3 +503,19 @@ p { color: #374151; font-size: 0.9rem; }
   .esquema-layout { grid-template-columns: 1fr; }
   .esquema-lateral { position: static; }
 }
+
+
+/* ── Aviso de solo consulta ──────────────────────────────── */
+/* Ocupa el lugar donde el Administrador ve el botón de crear. */
+.aviso-lectura {
+  margin-top: 8px;
+  padding: 9px 13px;
+  background: #f8fafc;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 0 8px 8px 0;
+  font-size: .8rem;
+  color: #64748b;
+  line-height: 1.5;
+  max-width: 620px;
+}
+.aviso-lectura strong { color: #334155; }

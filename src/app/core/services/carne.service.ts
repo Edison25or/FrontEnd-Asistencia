@@ -90,8 +90,8 @@ export class CarneService {
     }
 
     // ── Nombre ──
-    const nombres   = `${t.pNombre || ''} ${t.sNombre || ''}`.trim() || '—';
-    const apellidos = `${t.aPaterno || ''} ${t.aMaterno || ''}`.trim() || '—';
+    const nombres   = `${t.pNombre || ''} ${t.sNombre || ''}`.trim() || '-';
+    const apellidos = `${t.aPaterno || ''} ${t.aMaterno || ''}`.trim() || '-';
 
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
@@ -103,13 +103,13 @@ export class CarneService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(150, 150, 150);
-    doc.text(t.puestoNombre || '—', W / 2, 49, { align: 'center', maxWidth: W - 4 });
-    doc.text(t.areaNombre   || '—', W / 2, 53, { align: 'center', maxWidth: W - 4 });
+    doc.text(t.puestoNombre || '-', W / 2, 49, { align: 'center', maxWidth: W - 4 });
+    doc.text(t.areaNombre   || '-', W / 2, 53, { align: 'center', maxWidth: W - 4 });
 
     // ── Documento ──
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
-    doc.text(`DNI: ${t.nroDocumento || '—'}`, W / 2, 58, { align: 'center' });
+    doc.text(`DNI: ${t.nroDocumento || '-'}`, W / 2, 58, { align: 'center' });
 
     // ── Banda ──
     // Sin ENTRADA ni SALIDA: el mismo carné sirve para ambas.

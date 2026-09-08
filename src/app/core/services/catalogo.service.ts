@@ -3,6 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface CatalogoSimple {
+  /**
+   * Clasificación de los tipos de ausencia: si el tipo corresponde a una
+   * ausencia prevista, a una imprevista, o a ambas.
+   *
+   * Los demás catálogos los devuelven en true, ya que no aplica la
+   * distinción.
+   */
+  aplicaPermiso?: boolean;
+  aplicaFaltaJustificada?: boolean;
   id:          number;
   nombre:      string;
   descripcion?: string;

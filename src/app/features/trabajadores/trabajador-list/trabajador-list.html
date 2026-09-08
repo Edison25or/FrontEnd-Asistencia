@@ -28,7 +28,14 @@
   <table class="custom-table">
     <thead>
       <tr>
-        <th>Nro de Documento</th>
+        <!--
+          La columna se oculta entera para quien no puede ver el
+          documento (RN-05). Mostrarla vacía deja al usuario preguntándose
+          si el dato falta o si el sistema falló.
+        -->
+        @if (esAdminOSuperAdmin()) {
+          <th>Nro de Documento</th>
+        }
         <th>Trabajador</th>
         <th style="text-align: center;">Acciones</th>
       </tr>
@@ -36,7 +43,9 @@
     <tbody>
       @for (t of trabajadoresFiltrados; track t.idTrabajador) {
         <tr>
-          <td class="bold">{{ t.nroDocumento }}</td>
+          @if (esAdminOSuperAdmin()) {
+            <td class="bold">{{ t.nroDocumento }}</td>
+          }
           <td>
             <div class="area">{{ t.nombreCompleto }}</div>
             <div class="puesto">{{ t.puestoNombre || 'Sin Puesto' }} - {{ t.areaNombre || 'Sin Área' }}</div>
@@ -80,7 +89,7 @@
         </tr>
       } @empty {
         <tr>
-          <td colspan="3" style="text-align: center; padding: 40px; color: #64748b;">
+          <td [attr.colspan]="esAdminOSuperAdmin() ? 3 : 2" style="text-align: center; padding: 40px; color: #64748b;">
             @if (isLoading) {
               <strong>Cargando datos del servidor...</strong>
             } @else {
@@ -123,7 +132,7 @@
           <div class="detalle-avatar">{{ trabajadorDetalle?.nombreCompleto?.charAt(0) }}</div>
           <div>
             <h3 style="margin:0;">{{ trabajadorDetalle?.nombreCompleto }}</h3>
-            <span class="detalle-puesto">{{ trabajadorDetalle?.puestoNombre }} — {{ trabajadorDetalle?.areaNombre }}</span>
+            <span class="detalle-puesto">{{ trabajadorDetalle?.puestoNombre }} - {{ trabajadorDetalle?.areaNombre }}</span>
           </div>
           <span class="detalle-badge" [class.badge-activo]="trabajadorDetalle?.estado === 'ACTIVO'" [class.badge-inactivo]="trabajadorDetalle?.estado === 'INACTIVO'">
             {{ trabajadorDetalle?.estado }}
@@ -134,30 +143,32 @@
           <div class="detalle-seccion">
             <h4 class="detalle-titulo-seccion">Datos Personales</h4>
             <div class="detalle-fila"><span class="detalle-label">Tipo Doc.</span><span>{{ trabajadorDetalle?.docIdentidad }}</span></div>
-            <div class="detalle-fila"><span class="detalle-label">Nro. Documento</span><span>{{ trabajadorDetalle?.nroDocumento }}</span></div>
+            @if (esAdminOSuperAdmin()) {
+              <div class="detalle-fila"><span class="detalle-label">Nro. Documento</span><span>{{ trabajadorDetalle?.nroDocumento }}</span></div>
+            }
             <div class="detalle-fila"><span class="detalle-label">Género</span><span>{{ trabajadorDetalle?.generoNombre }}</span></div>
             <div class="detalle-fila"><span class="detalle-label">Fecha Nac.</span><span>{{ trabajadorDetalle?.fechaNac }}</span></div>
           </div>
 
           <div class="detalle-seccion">
             <h4 class="detalle-titulo-seccion">Contacto</h4>
-            <div class="detalle-fila"><span class="detalle-label">Email</span><span>{{ trabajadorDetalle?.email || '—' }}</span></div>
-            <div class="detalle-fila"><span class="detalle-label">Teléfono</span><span>{{ trabajadorDetalle?.telefono || '—' }}</span></div>
-            <div class="detalle-fila"><span class="detalle-label">Dirección</span><span>{{ trabajadorDetalle?.direccion || '—' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Email</span><span>{{ trabajadorDetalle?.email || '-' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Teléfono</span><span>{{ trabajadorDetalle?.telefono || '-' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Dirección</span><span>{{ trabajadorDetalle?.direccion || '-' }}</span></div>
           </div>
 
           <div class="detalle-seccion">
             <h4 class="detalle-titulo-seccion">Contacto de Emergencia</h4>
-            <div class="detalle-fila"><span class="detalle-label">Nombre</span><span>{{ trabajadorDetalle?.contactoEmergencias || '—' }}</span></div>
-            <div class="detalle-fila"><span class="detalle-label">Teléfono</span><span>{{ trabajadorDetalle?.nroContacto || '—' }}</span></div>
-            <div class="detalle-fila"><span class="detalle-label">Parentesco</span><span>{{ trabajadorDetalle?.parentesco || '—' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Nombre</span><span>{{ trabajadorDetalle?.contactoEmergencias || '-' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Teléfono</span><span>{{ trabajadorDetalle?.nroContacto || '-' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Parentesco</span><span>{{ trabajadorDetalle?.parentesco || '-' }}</span></div>
           </div>
 
           <div class="detalle-seccion">
             <h4 class="detalle-titulo-seccion">Sistema</h4>
             <div class="detalle-fila"><span class="detalle-label">Área</span><span>{{ trabajadorDetalle?.areaNombre }}</span></div>
             <div class="detalle-fila"><span class="detalle-label">Puesto</span><span>{{ trabajadorDetalle?.puestoNombre }}</span></div>
-            <div class="detalle-fila"><span class="detalle-label">Rol</span><span>{{ trabajadorDetalle?.rol || '—' }}</span></div>
+            <div class="detalle-fila"><span class="detalle-label">Rol</span><span>{{ trabajadorDetalle?.rol || '-' }}</span></div>
           </div>
         </div>
 
@@ -342,7 +353,7 @@
             <div class="input-group">
               <label>Parentesco</label>
               <select formControlName="parentesco" class="select-rol">
-                <option value="">— Sin especificar —</option>
+                <option value="">- Sin especificar -</option>
                 <option value="PADRE">Padre</option>
                 <option value="MADRE">Madre</option>
                 <option value="CONYUGE">Cónyuge</option>

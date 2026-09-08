@@ -82,9 +82,9 @@
       <label>Trabajador</label>
       <select [(ngModel)]="consultaTrabajador" class="input-select">
         <option [ngValue]="null">Selecciona…</option>
-        @for (t of trabajadores; track t.idTrabajador) {
+        @for (t of trabajadoresDisponibles; track t.idTrabajador) {
           <option [ngValue]="t.idTrabajador">
-            {{ t.pNombre }} {{ t.aPaterno }} {{ t.aMaterno }} — {{ t.nroDocumento }}
+            {{ t.pNombre }} {{ t.aPaterno }} {{ t.aMaterno }}{{ t.nroDocumento ? ' - ' + t.nroDocumento : '' }}
           </option>
         }
       </select>
@@ -136,7 +136,7 @@
               <td>{{ item.fechaFin | fechaPe }}</td>
               <td class="col-num">{{ diasDe(item) }}</td>
               <td class="col-motivo">{{ item.comentario }}</td>
-              <td class="col-usuario">{{ item.registradoPor || '—' }}</td>
+              <td class="col-usuario">{{ item.registradoPor || '-' }}</td>
               @if (esJefeOSuperior()) {
                 <td style="text-align:center">
                   <!--
@@ -183,9 +183,9 @@
           <label>Trabajador *</label>
           <select formControlName="idTrabajador" class="input-select">
             <option [ngValue]="null">Selecciona…</option>
-            @for (t of trabajadores; track t.idTrabajador) {
+            @for (t of trabajadoresDisponibles; track t.idTrabajador) {
               <option [ngValue]="t.idTrabajador">
-                {{ t.pNombre }} {{ t.aPaterno }} {{ t.aMaterno }} — {{ t.nroDocumento }}
+                {{ t.pNombre }} {{ t.aPaterno }} {{ t.aMaterno }}{{ t.nroDocumento ? ' - ' + t.nroDocumento : '' }}
               </option>
             }
           </select>
@@ -198,10 +198,25 @@
           <label>Tipo de ausencia *</label>
           <select formControlName="idTipoAusencia" class="input-select">
             <option [ngValue]="null">Selecciona…</option>
-            @for (t of tiposAusencia; track t.id) {
+            @for (t of tiposDisponibles; track t.id) {
               <option [ngValue]="t.id">{{ t.nombre }}</option>
             }
           </select>
+          <!--
+            La clasificación orienta pero no obstruye: una operación
+            programada con antelación es un permiso por descanso médico,
+            aunque ese tipo se asocie normalmente a lo imprevisto.
+          -->
+          @if (tiposOcultos > 0 || mostrarTodosLosTipos) {
+            <label class="check-todos">
+              <input type="checkbox" [(ngModel)]="mostrarTodosLosTipos"
+                     [ngModelOptions]="{standalone: true}">
+              Mostrar todos los tipos
+              @if (!mostrarTodosLosTipos) {
+                <span class="ocultos">({{ tiposOcultos }} no habituales en esta pestaña)</span>
+              }
+            </label>
+          }
           @if (form.get('idTipoAusencia')?.invalid && form.get('idTipoAusencia')?.touched) {
             <span class="campo-error">Debes seleccionar un tipo.</span>
           }

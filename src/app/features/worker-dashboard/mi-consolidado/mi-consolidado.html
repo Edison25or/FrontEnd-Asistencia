@@ -29,68 +29,96 @@
               <div class="mensaje-sm">No se encontró consolidado para esta quincena.</div>
             } @else {
               <div class="detalle-grid">
-                <div class="detalle-seccion">
-                  <h4>Horas normales</h4>
-                  <div class="detalle-fila">
-                    <span>Diurnas</span><strong>{{ detalle.hNormalesDia }}</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Nocturnas</span><strong>{{ detalle.hNormalesNoche }}</strong>
-                  </div>
-                  <div class="detalle-fila total">
-                    <span>Total normales</span><strong>{{ detalle.hTotalNormales }}</strong>
-                  </div>
-                </div>
+                <!--
+                  Orden: primero las horas, después las ausencias.
+                  El trabajador entra a esta pantalla a ver cuánto trabajó;
+                  las faltas y permisos son el contexto de esa cifra, no el
+                  encabezado. Antes las tres columnas mezclaban ambas cosas.
 
-                <div class="detalle-seccion">
-                  <h4>Horas extra</h4>
-                  <div class="detalle-fila">
-                    <span>Diurnas (25%)</span><strong>{{ detalle.hExtraDiaA }}</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Nocturnas (25%)</span><strong>{{ detalle.hExtraNocheA }}</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Diurnas (35%)</span><strong>{{ detalle.hExtraDiaB }}</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Nocturnas (35%)</span><strong>{{ detalle.hExtraNocheB }}</strong>
-                  </div>
-                  <div class="detalle-fila total">
-                    <span>Total extra</span><strong>{{ detalle.hTotalExtra }}</strong>
-                  </div>
-                </div>
+                  Se retiró el desglose de horas extra en tramos del 25% y
+                  del 35%: son sobretasas que fija la normativa laboral y su
+                  cálculo queda fuera del alcance del sistema (AL-04). Los
+                  campos que las alimentaban tampoco existen ya en el DTO,
+                  de modo que salían siempre vacías.
+                -->
 
-                <div class="detalle-seccion">
-                  <h4>Resumen</h4>
-                  <div class="detalle-fila">
-                    <span>Faltas</span><strong>{{ detalle.diasFalta }} días</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Permisos</span><strong>{{ detalle.diasPermiso }} días</strong>
-                  </div>
-                  <div class="detalle-fila">
-                    <span>Faltas justificadas</span><strong>{{ detalle.diasFaltaJustificada }} días</strong>
-                  </div>
+                <!-- ── 1. Horas por turno, el desglose que corresponde ── -->
+                <div class="detalle-seccion col-ancha">
+                  <h4>Horas trabajadas por turno</h4>
+                  @for (t of detalle.totalesPorTurno; track t.turno + t.esFeriado) {
+                    <div class="detalle-fila">
+                      <span>
+                        {{ t.turno }}
+                        <span class="tag-feriado" *ngIf="t.esFeriado">feriado</span>
+                      </span>
+                      <strong>
+                        {{ t.hNormales }}
+                        <span class="val-extra" *ngIf="t.minExtra > 0">+ {{ t.hExtra }} extra</span>
+                      </strong>
+                    </div>
+                  }
+                  @if (!detalle.totalesPorTurno || detalle.totalesPorTurno.length === 0) {
+                    <div class="detalle-fila">
+                      <span>Sin horas registradas en el período</span><strong>-</strong>
+                    </div>
+                  }
+
                   <div class="detalle-fila total destacado">
                     <span>Total general</span><strong>{{ detalle.hTotalGeneral }}</strong>
                   </div>
                 </div>
 
+                <!-- ── 2. Totales agrupados ── -->
                 <div class="detalle-seccion">
-                  <h4>Horas por turno</h4>
-                  @for (t of detalle.totalesPorTurno; track t.turno + t.esFeriado) {
-                    <div class="detalle-fila">
-                      <span>{{ t.turno }}{{ t.esFeriado ? ' (feriado)' : '' }}</span>
-                      <strong>{{ t.hNormales }}<span *ngIf="t.minExtra > 0"> + {{ t.hExtra }} extra</span></strong>
-                    </div>
-                  }
-                  @if (!detalle.totalesPorTurno || detalle.totalesPorTurno.length === 0) {
-                    <div class="detalle-fila">
-                      <span>Sin horas registradas</span><strong>—</strong>
-                    </div>
-                  }
+                  <h4>Totales</h4>
+                  <div class="detalle-fila">
+                    <span>Horas normales</span><strong>{{ detalle.hTotalNormales }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Horas extra</span>
+                    <strong class="val-extra">{{ detalle.hTotalExtra }}</strong>
+                  </div>
+                  <div class="detalle-fila" *ngIf="detalle.hTotalFeriado !== '00:00'">
+                    <span>Trabajadas en feriado</span>
+                    <strong class="val-feriado">{{ detalle.hTotalFeriado }}</strong>
+                  </div>
+                  <div class="detalle-nota">
+                    Las horas de feriado ya están incluidas en el total y se
+                    muestran aparte porque se pagan distinto.
+                  </div>
                 </div>
+
+                <!-- ── 3. Ausencias e incidencias ── -->
+                <div class="detalle-seccion">
+                  <h4>Ausencias e incidencias</h4>
+                  <div class="detalle-fila">
+                    <span>Faltas</span>
+                    <strong [class.val-falta]="detalle.diasFalta > 0">
+                      {{ detalle.diasFalta }} {{ detalle.diasFalta === 1 ? 'día' : 'días' }}
+                    </strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Permisos</span>
+                    <strong>{{ detalle.diasPermiso }} {{ detalle.diasPermiso === 1 ? 'día' : 'días' }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Faltas justificadas</span>
+                    <strong>{{ detalle.diasFaltaJustificada }} {{ detalle.diasFaltaJustificada === 1 ? 'día' : 'días' }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Tardanza acumulada</span>
+                    <strong>{{ formatMin(detalle.minTotalTardanza) }}</strong>
+                  </div>
+                  <div class="detalle-fila">
+                    <span>Salida anticipada</span>
+                    <strong>{{ formatMin(detalle.minTotalSalTemprana) }}</strong>
+                  </div>
+                  <div class="detalle-nota">
+                    El sistema entrega las horas trabajadas. El cálculo del pago,
+                    con sus recargos por sobretiempo, lo realiza Contabilidad.
+                  </div>
+                </div>
+
               </div>
             }
           </div>

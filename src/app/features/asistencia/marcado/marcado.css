@@ -14,7 +14,7 @@
 }
 
 /* =======================================
-   PANEL IZQUIERDO — MARCADO
+   PANEL IZQUIERDO - MARCADO
    ======================================= */
 .panel-marcado {
   flex: 1.4;
@@ -211,7 +211,7 @@
 }
 
 /* =======================================
-   PANEL DERECHO — EN PLANTA
+   PANEL DERECHO - EN PLANTA
    ======================================= */
 .panel-planta {
   width: 340px;

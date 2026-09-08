@@ -34,7 +34,7 @@ export class FechaPePipe implements PipeTransform {
 
   transform(valor: string | null | undefined,
             modo: 'normal' | 'corta' | 'hora' | 'larga' = 'normal'): string {
-    if (!valor) return '—';
+    if (!valor) return '-';
 
     const s = String(valor).trim();
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);

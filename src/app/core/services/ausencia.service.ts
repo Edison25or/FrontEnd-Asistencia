@@ -61,10 +61,10 @@ export interface FaltaJustificadaResponse {
  * Son dos entidades distintas y no un solo registro con una bandera,
  * porque tienen reglas de plazo diferentes:
  *
- *   Permiso            — planificado, se espera de una a dos semanas de
+ *   Permiso            - planificado, se espera de una a dos semanas de
  *                        anticipación; fuera de ese plazo se acepta con
  *                        advertencia (RN-30).
- *   Falta justificada  — no planificada, sin límite de plazo (RN-32).
+ *   Falta justificada  - no planificada, sin límite de plazo (RN-32).
  *
  * Ambas neutralizan los pre-registros del rango (RN-44): sin eso, el
  * cierre diario reportaría como falta injustificada a alguien con permiso

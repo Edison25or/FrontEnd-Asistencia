@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FechaPePipe } from '../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
@@ -99,9 +100,59 @@ export class ConsolidadoComponent implements OnInit {
   cargarQuincenas() {
     this.isLoadingQ = true;
     this.svc.getQuincenas().subscribe({
-      next:  q  => { this.quincenas = q; this.isLoadingQ = false; this.cdr.detectChanges(); },
+      next: q => {
+        this.quincenas  = q;
+        this.isLoadingQ = false;
+        // Se abre en la quincena vigente en lugar de dejar la pantalla en
+        // blanco esperando una selección.
+        if (!this.quincenaActual) {
+          const v = this.quincenaVigente();
+          if (v) this.seleccionar(v);
+        }
+        this.cdr.detectChanges();
+      },
       error: () => { this.isLoadingQ = false; this.cdr.detectChanges(); }
     });
+  }
+
+  /**
+   * Quincena que contiene el día de hoy, o la más reciente ya iniciada.
+   *
+   * Sin esto la pantalla arrancaba vacía y había que elegir un período,
+   * cuando quien entra aquí viene a trabajar sobre el actual.
+   */
+  private quincenaVigente(): QuincenaResumen | null {
+    if (!this.quincenas.length) return null;
+    const hoy = new Date().toISOString().substring(0, 10);
+
+    const contiene = this.quincenas.find(q =>
+      String(q.inicio).substring(0, 10) <= hoy &&
+      hoy < String(q.fin).substring(0, 10));
+    if (contiene) return contiene;
+
+    const pasadas = this.quincenas
+      .filter(q => String(q.inicio).substring(0, 10) <= hoy)
+      .sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)));
+    return pasadas[0] ?? this.quincenas[0];
+  }
+
+  /** Selección desde el desplegable, que entrega el identificador. */
+  /**
+   * true mientras la quincena seleccionada no haya terminado.
+   *
+   * Consolidar un período en curso no tiene sentido: sus últimas jornadas
+   * aún no ocurrieron y figuran como pendientes, de modo que el sistema
+   * las cuenta como bloqueantes y devuelve un mensaje que el usuario no
+   * puede accionar.
+   */
+  get quincenaEnCurso(): boolean {
+    if (!this.quincenaActual) return false;
+    return new Date() < new Date(this.quincenaActual.fin);
+  }
+
+  seleccionarPorId(id: number) {
+    const q = this.quincenas.find(x => x.idQuincena === Number(id));
+    if (q) this.seleccionar(q);
   }
 
   seleccionar(q: QuincenaResumen) {
@@ -133,7 +184,7 @@ export class ConsolidadoComponent implements OnInit {
       error: (e: any) => {
         this.consolidados = [];
         this.columnasTurno = [];
-        this.errorGlobal = e.error?.message || '';
+        this.errorGlobal = mensajeError(e, '');
         this.isLoadingC = false;
         this.cdr.detectChanges();
       }
@@ -188,7 +239,7 @@ export class ConsolidadoComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorGlobal  = e.error?.message || 'Error al generar el consolidado.';
+        this.errorGlobal  = mensajeError(e, 'Error al generar el consolidado.');
         this.isProcesando = false;
         this.cargarQuincenas();
         this.cdr.detectChanges();
@@ -284,7 +335,7 @@ export class ConsolidadoComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorEdit    = e.error?.message || 'Error al guardar.';
+        this.errorEdit    = mensajeError(e, 'Error al guardar.');
         this.isProcesando = false;
         this.cdr.detectChanges();
       }
@@ -326,7 +377,7 @@ export class ConsolidadoComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (e: any) => {
-        this.errorReaper  = e.error?.message || 'Error al reabrir la quincena.';
+        this.errorReaper  = mensajeError(e, 'Error al reabrir la quincena.');
         this.isProcesando = false;
         this.cdr.detectChanges();
       }

@@ -20,22 +20,22 @@
       @for (r of registros; track r.fecha) {
         <div class="registro-card">
           <div class="registro-fecha">
-            <span class="dia-semana">{{ r.diaSemana }}</span>
-            <span class="fecha">{{ r.fecha }}</span>
+            <span class="dia-semana">{{ diaSemana(r.fecha) }}</span>
+            <span class="fecha">{{ r.fecha | fechaPe }}</span>
           </div>
           <div class="registro-horas">
             <div class="hora-item">
               <span class="hora-label">Entrada</span>
-              <span class="hora-valor">{{ r.horaEntrada ?? '—' }}</span>
+              <span class="hora-valor">{{ r.horaEntrada ?? '-' }}</span>
             </div>
             <div class="hora-item">
               <span class="hora-label">Salida</span>
-              <span class="hora-valor">{{ r.horaSalida ?? '—' }}</span>
+              <span class="hora-valor">{{ r.horaSalida ?? '-' }}</span>
             </div>
           </div>
           <div class="registro-estado">
-            <span class="badge" [ngClass]="getEstadoClass(r.estado)">
-              {{ getEstadoLabel(r.estado) }}
+            <span class="badge" [ngClass]="getEstadoClass(r)">
+              {{ getEstadoLabel(r) }}
             </span>
           </div>
         </div>

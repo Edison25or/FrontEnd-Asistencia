@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DashboardService, Estadisticas, PuntoDiario }
@@ -17,9 +18,9 @@ type Rango = '7d' | '15d' | '30d' | 'mes' | 'custom';
  * Las cifras sueltas dicen qué pasó; lo que permite decidir es verlas
  * repartidas. Por eso además de los totales hay tres cortes:
  *
- *   Tendencia diaria — distingue un mal día de un problema sostenido.
- *   Área y turno     — es donde aparecen los desequilibrios.
- *   Sobrecarga       — quién acumula horas por encima de lo esperado,
+ *   Tendencia diaria - distingue un mal día de un problema sostenido.
+ *   Área y turno     - es donde aparecen los desequilibrios.
+ *   Sobrecarga       - quién acumula horas por encima de lo esperado,
  *                      que es lo que permite actuar antes de que se
  *                      convierta en un problema.
  *
@@ -60,7 +61,13 @@ export class EstadisticasComponent implements OnInit {
     this.rolUsuario = this.auth.getRolUsuario() || '';
     this.aplicarRango('30d');
 
-    this.maestros.getAreas().subscribe({
+    // getAreas() apunta a la ruta administrativa, exclusiva del
+    // Superadministrador. El Jefe accede a esta pantalla y recibia un
+    // rechazo, de modo que el selector de area quedaba vacio.
+    //
+    // Aqui ademas basta con las areas vigentes: no tiene sentido filtrar
+    // indicadores por un area dada de baja.
+    this.maestros.getAreasActivas().subscribe({
       next: (a: AreaItem[]) => { this.areas = a; this.cdr.detectChanges(); }
     });
 
@@ -107,7 +114,7 @@ export class EstadisticasComponent implements OnInit {
     this.svc.getEstadisticas(this.desde, this.hasta, this.idArea).subscribe({
       next: d => { this.datos = d; this.isLoading = false; this.cdr.detectChanges(); },
       error: (e: any) => {
-        this.errorGlobal = e.error?.message || 'No se pudieron cargar las estadísticas.';
+        this.errorGlobal = mensajeError(e, 'No se pudieron cargar las estadísticas.');
         this.isLoading   = false;
         this.cdr.detectChanges();
       }
@@ -228,6 +235,19 @@ export class EstadisticasComponent implements OnInit {
   }
 
   esJefe(): boolean { return this.rolUsuario === 'ROLE_JEFE'; }
+
+  /**
+   * true si el rol queda restringido a su propia área.
+   *
+   * El Jefe y el Supervisor ven solo su ámbito, de modo que ofrecerles un
+   * selector de área invitaría a elegir una que el servidor va a
+   * descartar. La restricción real vive en el backend; aquí se oculta el
+   * control para no prometer lo que no se cumple.
+   */
+  restringidoASuArea(): boolean {
+    return this.rolUsuario === 'ROLE_JEFE'
+        || this.rolUsuario === 'ROLE_SUPERVISOR';
+  }
 
   get hayDatos(): boolean {
     return !!this.datos && this.datos.totalJornadas > 0;
