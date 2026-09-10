@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
-import { FechaPePipe } from '../../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaLocal } from '../../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { RevisionAsistenciaService } from '../../../core/services/revision-asistencia.service';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
@@ -168,7 +168,7 @@ export class RevisionAsistenciaComponent implements OnInit {
    */
   private quincenaVigente(): any {
     if (!this.quincenas.length) return null;
-    const hoy = new Date().toISOString().substring(0, 10);
+    const hoy = fechaLocal();
 
     const contiene = this.quincenas.find(q =>
       String(q.inicio).substring(0, 10) <= hoy &&

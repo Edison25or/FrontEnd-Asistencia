@@ -49,7 +49,14 @@ export class MiHorarioComponent implements OnInit {
         }
         this.cdr.detectChanges();
       },
-      error: () => { this.error = 'Error al cargar horario.'; this.cdr.detectChanges(); }
+      // Cada llamada apaga su propio indicador: antes solo lo hacía la
+      // segunda, de modo que un fallo suyo dejaba la pantalla cargando
+      // para siempre aunque la primera hubiera respondido bien.
+      error: () => {
+        this.error = 'No se pudo cargar tu horario.';
+        this.cargando = false;
+        this.cdr.detectChanges();
+      }
     });
 
     // Cargar semana siguiente
@@ -79,19 +86,36 @@ export class MiHorarioComponent implements OnInit {
     });
   }
 
-  /** Calcula el sábado de la semana actual (offset=0) o siguiente (offset=1) */
+  /**
+   * Sábado que inicia la semana: la actual con offset 0, la siguiente
+   * con offset 1.
+   *
+   * ============================================================
+   * POR QUÉ NO SE USA toISOString()
+   * ============================================================
+   * toISOString() convierte a UTC. En Lima, que va cinco horas por
+   * detrás, cualquier consulta hecha a partir de las 19:00 devolvía el
+   * día siguiente: el sistema pedía la semana del domingo, que no
+   * existe, y el horario aparecía vacío sin ningún error.
+   *
+   * La fecha se arma con los componentes locales, de modo que el día que
+   * se envía es el que la persona tiene en su reloj.
+   */
   private getSabado(offset: number): string {
     const hoy = new Date();
-    const dow = hoy.getDay(); // 0=Dom..6=Sáb
-    const diasHastaSabado = (6 - dow + 7) % 7;
-    const sabado = new Date(hoy);
-    // Si hoy es sábado, offset=0 → mismo sábado
-    if (dow === 6) {
-      sabado.setDate(hoy.getDate() + (offset * 7));
-    } else {
-      // Retroceder al sábado pasado
-      sabado.setDate(hoy.getDate() - ((dow + 1) % 7) + (offset * 7));
-    }
-    return sabado.toISOString().substring(0, 10);
+
+    // getDay(): 0 = domingo .. 6 = sábado. Se retrocede al sábado de la
+    // semana en curso; si hoy ES sábado, se queda donde está.
+    const diasDesdeSabado = (hoy.getDay() + 1) % 7;
+
+    const sabado = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth(),
+      hoy.getDate() - diasDesdeSabado + offset * 7
+    );
+
+    const mm = String(sabado.getMonth() + 1).padStart(2, '0');
+    const dd = String(sabado.getDate()).padStart(2, '0');
+    return `${sabado.getFullYear()}-${mm}-${dd}`;
   }
 }

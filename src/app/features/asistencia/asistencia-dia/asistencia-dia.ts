@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { fechaPe } from '../../../shared/fecha-pe.pipe';
+import { fechaPe, fechaLocal } from '../../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { AsistenciaService } from '../../../core/services/asistencia.service';
 
@@ -83,7 +83,7 @@ export class AsistenciaDiaComponent implements OnInit {
     // sola durante el día.
     const ayer = new Date();
     ayer.setDate(ayer.getDate() - 1);
-    const limiteFecha = ayer.toISOString().substring(0, 10);
+    const limiteFecha = fechaLocal(ayer);
     resultado = resultado.filter(a => !a.fecha || a.fecha >= limiteFecha);
 
     // ── Orden descendente, sin excepciones ──
@@ -142,7 +142,7 @@ export class AsistenciaDiaComponent implements OnInit {
   /** true si la jornada no es del día de hoy. */
   esDeOtroDia(iso: string): boolean {
     if (!iso) return false;
-    return iso !== new Date().toISOString().substring(0, 10);
+    return iso !== fechaLocal();
   }
 
   calcularResumen() {

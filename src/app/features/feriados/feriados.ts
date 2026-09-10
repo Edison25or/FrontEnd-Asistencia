@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
-import { FechaPePipe } from '../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaLocal } from '../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { FeriadoService, Feriado, ImpactoFeriado } from '../../core/services/feriado.service';
 import { AuthService } from '../../core/services/auth';
@@ -221,6 +221,6 @@ export class FeriadosComponent implements OnInit {
   }
 
   esPasado(iso: string): boolean {
-    return iso < new Date().toISOString().substring(0, 10);
+    return iso < fechaLocal();
   }
 }

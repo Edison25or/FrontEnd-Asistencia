@@ -219,9 +219,44 @@ export class MarcadoComponent implements OnInit, OnDestroy {
     return registro?.requiereConfirmacion === true;
   }
 
-  /** Mensaje listo para el dispositivo, que ya arma el backend (RNF009). */
+  /**
+   * Redacta el aviso de la marcación.
+   *
+   * El servidor devuelve un código de resultado y los datos; el texto se
+   * compone aquí. Antes llegaba ya escrito, de modo que corregir una
+   * palabra o cambiar el tono obligaba a recompilar el backend, y el
+   * mismo texto no podía adaptarse a esta pantalla, que se lee de lejos
+   * y en pocos segundos.
+   */
   mensajeRegistro(registro: any): string {
-    return registro?.mensaje || '';
+    const tardanza = registro?.minTardanza ?? 0;
+
+    switch (registro?.resultado) {
+      case 'ENTRADA_OK':
+        return 'Entrada registrada.';
+
+      case 'ENTRADA_TARDE':
+        return `Entrada registrada con ${tardanza} minuto`
+             + `${tardanza === 1 ? '' : 's'} de tardanza.`;
+
+      case 'SALIDA_OK':
+        return 'Salida registrada. Buen trabajo.';
+
+      case 'SALIDA_REVISION':
+        return 'Salida registrada. Tu jefe revisará el tiempo adicional.';
+
+      case 'REBOTE':
+        // El lector envió dos escaneos casi seguidos: el segundo se
+        // descarta para no cerrar la jornada por accidente.
+        return 'Tu marcación ya se registró hace unos segundos.';
+
+      case 'CONFIRMAR_ANTICIPADA':
+        return '¿Vas a hacer horas extra? Vuelve a pasar tu código para confirmar.';
+
+      default:
+        // Respaldo para respuestas que aún traigan el texto del servidor.
+        return registro?.mensaje || 'Marcación registrada.';
+    }
   }
 
   getEtiquetaEstado(registro: any): string {

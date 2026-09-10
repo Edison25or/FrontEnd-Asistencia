@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
-import { FechaPePipe, fechaPe } from '../../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaPe, fechaLocal } from '../../../shared/fecha-pe.pipe';
 import { AuthService } from '../../../core/services/auth';
 import * as XLSX from 'xlsx-js-style';
 import jsPDF from 'jspdf';
@@ -440,7 +440,7 @@ export class ReporteAsistenciaComponent implements OnInit {
         + `    Permisos: ${this.totalPermisos}`, 14, 31);
 
       doc.setTextColor(110);
-      doc.text(`Emitido el ${fechaPe(new Date().toISOString())}`,
+      doc.text(`Emitido el ${fechaPe(fechaLocal())}`,
                ancho - 14, 14, { align: 'right' });
       doc.setTextColor(0);
 
@@ -506,10 +506,10 @@ export class ReporteAsistenciaComponent implements OnInit {
     return `${Math.floor(min / 60)}h ${(min % 60).toString().padStart(2, '0')}m`;
   }
 
-  private hoy(): string { return new Date().toISOString().split('T')[0]; }
+  private hoy(): string { return fechaLocal(); }
 
   private primerDiaMes(): string {
     const d = new Date(); d.setDate(1);
-    return d.toISOString().split('T')[0];
+    return fechaLocal(d);
   }
 }

@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FechaPePipe } from '../../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaLocal } from '../../../shared/fecha-pe.pipe';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { AuthService } from '../../../core/services/auth';
 
@@ -63,7 +63,7 @@ export class MiAsistenciaComponent implements OnInit {
 
   /** Filtra igual que la app móvil: días pasados con registro + próximo programado */
   private filtrarRegistros(lista: any[]): any[] {
-    const hoy = new Date().toISOString().substring(0, 10);
+    const hoy = fechaLocal();
     const conRegistro = lista.filter(r => {
       const estado = (r.estado || '').toUpperCase();
       return r.fecha <= hoy && !['PENDIENTE', 'PROGRAMADO', ''].includes(estado);
@@ -80,7 +80,7 @@ export class MiAsistenciaComponent implements OnInit {
 
   private calcularFechas(rango: Rango): { inicio: string; fin: string } {
     const hoy = new Date();
-    const fmt = (d: Date) => d.toISOString().substring(0, 10);
+    const fmt = (d: Date) => fechaLocal(d);
 
     switch (rango) {
       case 'SEMANA': {

@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
-import { FechaPePipe } from '../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaLocal } from '../../shared/fecha-pe.pipe';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, Observable } from 'rxjs';
 import { AusenciaService, PermisoResponse, FaltaJustificadaResponse }
@@ -142,7 +142,13 @@ export class AusenciasComponent implements OnInit {
       fechaInicio:    ['',   Validators.required],
       fechaFin:       ['',   Validators.required],
       // Motivo obligatorio (RN-02). Toda acción sensible se justifica.
-      comentario:     ['',   [Validators.required, Validators.maxLength(500)]]
+      comentario:     ['',   [Validators.required, Validators.maxLength(500)]],
+
+      // Sustento documental. No es obligatorio: una ausencia puede
+      // registrarse antes de que el documento llegue, y marcarse después.
+      // Exigirlo bloquearía el registro de casos legítimos.
+      sustentoRecibido:   [false],
+      referenciaSustento: ['',  Validators.maxLength(200)]
     });
   }
 
@@ -156,7 +162,7 @@ export class AusenciasComponent implements OnInit {
   }
 
   private iso(d: Date): string {
-    return d.toISOString().substring(0, 10);
+    return fechaLocal(d);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -235,7 +241,8 @@ export class AusenciasComponent implements OnInit {
     this.guardando       = false;
     this.ultimoResultado = null;
     this.form.reset({ idTrabajador: null, idTipoAusencia: null,
-                      fechaInicio: '', fechaFin: '', comentario: '' });
+                      fechaInicio: '', fechaFin: '', comentario: '',
+                      sustentoRecibido: false, referenciaSustento: '' });
     this.mostrarModal = true;
   }
 

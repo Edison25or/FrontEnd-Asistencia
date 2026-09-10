@@ -117,6 +117,8 @@
             <th>Hasta</th>
             <th>Días</th>
             <th>Motivo</th>
+            <!-- Ver de un vistazo qué ausencias quedaron sin sustentar. -->
+            <th style="text-align:center">Sustento</th>
             <th>Registrado por</th>
             @if (esJefeOSuperior()) { <th style="text-align:center">Acciones</th> }
           </tr>
@@ -136,6 +138,18 @@
               <td>{{ item.fechaFin | fechaPe }}</td>
               <td class="col-num">{{ diasDe(item) }}</td>
               <td class="col-motivo">{{ item.comentario }}</td>
+              <td style="text-align:center">
+                @if (item.sustentoRecibido) {
+                  <span class="chip-sustento"
+                        [title]="item.referenciaSustento || 'Documentación recibida'">
+                    recibido
+                  </span>
+                } @else {
+                  <span class="chip-pendiente" title="Aún no se registra el documento">
+                    pendiente
+                  </span>
+                }
+              </td>
               <td class="col-usuario">{{ item.registradoPor || '-' }}</td>
               @if (esJefeOSuperior()) {
                 <td style="text-align:center">
@@ -242,6 +256,37 @@
             <span class="campo-error">El motivo es obligatorio.</span>
           }
         </div>
+
+        <!--
+          Sustento documental. El sistema no guarda el archivo: registra
+          que llegó y dónde encontrarlo. El documento ya vive donde la
+          empresa lo recibió, casi siempre el correo, y custodiar una copia
+          de un certificado médico trae obligaciones que el resto del
+          sistema no tiene.
+        -->
+        <div class="campo">
+          <label class="check-sustento">
+            <input type="checkbox" formControlName="sustentoRecibido">
+            <span>
+              <strong>Documentación recibida</strong>
+              <em>Marca esta casilla si ya cuentas con el certificado,
+                  constancia o citación que sustenta la ausencia.</em>
+            </span>
+          </label>
+        </div>
+
+        @if (form.get('sustentoRecibido')?.value) {
+          <div class="campo">
+            <label>Referencia del sustento <span class="opcional">(opcional)</span></label>
+            <input type="text" formControlName="referenciaSustento"
+                   class="input-text" maxlength="200"
+                   placeholder="Correo del 08/09 de Jhan Malca, asunto &quot;Descanso médico 08 al 10&quot;">
+            <span class="campo-ayuda">
+              Dónde encontrar el documento: el correo que lo trajo, un
+              folder físico o el expediente donde quedó archivado.
+            </span>
+          </div>
+        }
 
         <p class="modal-nota">
           Al guardar, las jornadas programadas del rango que aún no estén

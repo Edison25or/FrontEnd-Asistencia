@@ -1,4 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
+import { AvisoService } from '../../../shared/aviso.service';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -14,6 +15,8 @@ import { TrabajadorService } from '../../../core/services/trabajador.service';
 export class TrabajadorFormComponent implements OnInit {
 
   private fb = inject(FormBuilder);
+
+  private aviso = inject(AvisoService);
   private trabajadorService = inject(TrabajadorService);
   private router = inject(Router);
 
@@ -124,7 +127,7 @@ export class TrabajadorFormComponent implements OnInit {
       this.trabajadorService.crearTrabajador(payload).subscribe({
         next: () => {
           this.isLoading = false;
-          alert('¡Trabajador registrado con éxito y cuenta de usuario generada!');
+          this.aviso.exito('Trabajador registrado con éxito y cuenta de usuario generada!');
           this.router.navigate(['/dashboard/trabajadores']);
         },
         error: (err) => {

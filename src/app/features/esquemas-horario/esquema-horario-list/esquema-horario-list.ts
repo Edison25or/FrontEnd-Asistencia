@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { AvisoService } from '../../../shared/aviso.service';
 import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
@@ -26,6 +27,8 @@ const DIAS = [
 export class EsquemaHorarioListComponent implements OnInit {
 
   private service     = inject(EsquemaHorarioService);
+
+  private aviso = inject(AvisoService);
   private authService = inject(AuthService);
   private turnoService = inject(TurnoService);
   private fb          = inject(FormBuilder);
@@ -325,7 +328,7 @@ export class EsquemaHorarioListComponent implements OnInit {
     if (!this.esquemaParaToggle) return;
     this.service.toggleActivo(this.esquemaParaToggle.idEsquema).subscribe({
       next: () => { this.cerrarConfirmToggle(); this.cargar(); },
-      error: (err: any) => { alert(mensajeError(err, 'Error.')); this.cerrarConfirmToggle(); }
+      error: (err: any) => { this.aviso.error(mensajeError(err, 'Error.')); this.cerrarConfirmToggle(); }
     });
   }
 

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ConsolidadoService, ConsolidadoReporte, Consolidado, TotalTurno }
   from '../../../core/services/consolidado.service';
-import { FechaPePipe, fechaPe } from '../../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaPe, fechaLocal } from '../../../shared/fecha-pe.pipe';
 // xlsx-js-style y no xlsx: la version comunitaria de SheetJS ignora los
 // estilos de celda, de modo que el archivo salia sin formato. Este
 // derivado mantiene la misma interfaz y si los aplica.
@@ -410,7 +410,7 @@ export class ReporteConsolidadoComponent implements OnInit {
 
       doc.setFontSize(8);
       doc.setTextColor(110);
-      doc.text(`Emitido el ${fechaPe(new Date().toISOString())}`,
+      doc.text(`Emitido el ${fechaPe(fechaLocal())}`,
                ancho - 14, 14, { align: 'right' });
       doc.setTextColor(0);
 

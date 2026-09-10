@@ -357,3 +357,41 @@
     </div>
   </div>
 </div>
+
+<!-- ══ ADVERTENCIA: generar el consolidado ══════════════════ -->
+<!--
+  Reemplaza al confirm() del navegador. La operación cierra la quincena y
+  solo el Superadministrador puede reabrirla, de modo que la advertencia
+  debe leerse con calma y no en un diálogo del sistema.
+-->
+@if (mostrarConfirmGenerar) {
+  <div class="modal-overlay" (click)="mostrarConfirmGenerar = false">
+    <div class="modal-box modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Generar consolidado y cerrar quincena</h3>
+        <button class="modal-x" (click)="mostrarConfirmGenerar = false">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="conf-principal">
+          Al generar el consolidado, la quincena
+          <strong>{{ quincenaActual?.descripcion }}</strong> queda cerrada y
+          deja de admitir marcaciones.
+        </p>
+        <ul class="conf-lista">
+          <li>Las jornadas del período pasan a estado consolidado.</li>
+          <li>Solo el Superadministrador puede reabrirla, con motivo registrado.</li>
+          <li>Al reabrir y volver a generar, la versión anterior se conserva.</li>
+        </ul>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="mostrarConfirmGenerar = false">Cancelar</button>
+        <button class="btn-generar" (click)="confirmarGenerar()">
+          Generar y cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+

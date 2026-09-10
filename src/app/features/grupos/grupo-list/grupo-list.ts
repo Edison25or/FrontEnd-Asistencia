@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { AvisoService } from '../../../shared/aviso.service';
 import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -18,6 +19,8 @@ import { forkJoin } from 'rxjs';
 export class GrupoListComponent implements OnInit {
 
   private grupoService      = inject(GrupoService);
+
+  private aviso = inject(AvisoService);
   private trabajadorService = inject(TrabajadorService);
   private authService       = inject(AuthService);
   private maestrosService   = inject(MaestrosService);
@@ -277,7 +280,7 @@ export class GrupoListComponent implements OnInit {
       error: (err: any) => {
         this.isProcesando = false;
         this.cdr.detectChanges();
-        alert(mensajeError(err, 'No se pudo eliminar.'));
+        this.aviso.error(mensajeError(err, 'No se pudo eliminar.'));
       }
     });
   }

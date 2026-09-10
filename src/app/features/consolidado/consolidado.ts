@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { mensajeError } from '../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
-import { FechaPePipe } from '../../shared/fecha-pe.pipe';
+import { FechaPePipe, fechaLocal } from '../../shared/fecha-pe.pipe';
 import { FormsModule } from '@angular/forms';
 import { ConsolidadoService, Consolidado, QuincenaResumen, TotalTurno }
   from '../../core/services/consolidado.service';
@@ -58,6 +58,9 @@ export class ConsolidadoComponent implements OnInit {
   isLoadingQ   = false;
   isLoadingC   = false;
   isProcesando = false;
+
+  /** Advertencia previa a generar el consolidado. */
+  mostrarConfirmGenerar = false;
   errorGlobal  = '';
   rolUsuario   = '';
 
@@ -123,7 +126,7 @@ export class ConsolidadoComponent implements OnInit {
    */
   private quincenaVigente(): QuincenaResumen | null {
     if (!this.quincenas.length) return null;
-    const hoy = new Date().toISOString().substring(0, 10);
+    const hoy = fechaLocal();
 
     const contiene = this.quincenas.find(q =>
       String(q.inicio).substring(0, 10) <= hoy &&
@@ -220,11 +223,20 @@ export class ConsolidadoComponent implements OnInit {
       return;
     }
 
-    const ok = confirm(
-      'Generar el consolidado CIERRA la quincena y no admite marcaciones ' +
-      'posteriores.\n\nSolo el Superadministrador puede reabrirla, con motivo ' +
-      'registrado.\n\n¿Continuar?');
-    if (!ok) return;
+    // La confirmación usa un modal propio y no confirm() del navegador.
+    //
+    // El diálogo nativo se encabeza con "localhost:4200 dice", no permite
+    // dar formato al texto ni distinguir la gravedad de la acción, y
+    // bloquea la pantalla mientras está abierto. Aquí la operación cierra
+    // la quincena de forma irreversible salvo reapertura, así que merece
+    // una advertencia que se lea con calma.
+    this.mostrarConfirmGenerar = true;
+  }
+
+  /** Confirmada la advertencia, se genera el consolidado. */
+  confirmarGenerar() {
+    this.mostrarConfirmGenerar = false;
+    if (!this.quincenaActual) return;
 
     this.isProcesando = true;
     this.errorGlobal  = '';

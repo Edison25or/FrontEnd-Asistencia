@@ -1,4 +1,6 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { fechaLocal } from '../../../shared/fecha-pe.pipe';
+import { AvisoService } from '../../../shared/aviso.service';
 import { mensajeError } from '../../../shared/mensaje-error';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
@@ -23,6 +25,7 @@ export class TrabajadorListComponent implements OnInit {
 
   // --- SERVICIOS ---
   private authService      = inject(AuthService);
+  private aviso = inject(AvisoService);
   private trabajadorService = inject(TrabajadorService);
   private usuarioService   = inject(UsuarioService);
   private catalogoService  = inject(CatalogoService);
@@ -72,7 +75,7 @@ export class TrabajadorListComponent implements OnInit {
     return this.motivoCese.trim().toLowerCase() === 'otro';
   }
   fechaCese              = '';
-  today = new Date().toISOString().split('T')[0];
+  today = fechaLocal();
 
   // --- MODAL REINGRESO ---
   mostrarModalReingreso        = false;
@@ -127,6 +130,25 @@ export class TrabajadorListComponent implements OnInit {
 
   // --- MENSAJE CREDENCIAL TRAS EDICIÓN ---
   mensajeCredencial = '';
+
+  /**
+   * Redacta el aviso de cambio de credenciales.
+   *
+   * El servidor devuelve dos indicadores; el texto es responsabilidad de
+   * la interfaz, que es donde se decide cómo se le habla al usuario.
+   */
+  private armarAvisoCredencial(res: any): string {
+    const partes: string[] = [];
+
+    if (res?.cambioUsuario) {
+      partes.push(`El trabajador iniciará sesión con su nuevo correo: ${res.email}.`);
+    }
+    if (res?.cambioPassword) {
+      partes.push('Su contraseña pasó a ser el nuevo número de documento, '
+                + 'y deberá cambiarla al entrar.');
+    }
+    return partes.join(' ');
+  }
 
   // --- MODAL RESET PASSWORD ---
   mostrarModalReset        = false;
@@ -377,7 +399,10 @@ export class TrabajadorListComponent implements OnInit {
     this.trabajadorService.updateTrabajador(this.trabajadorEditandoId, payload).subscribe({
       next: (res: any) => {
         this.isProcesandoModal = false;
-        this.mensajeCredencial = res?.mensajeCredencial || '';
+        // El texto se redacta AQUÍ, a partir de lo que el servidor
+        // informa que cambió. Antes llegaba escrito desde el backend, de
+        // modo que ajustar el tono o el formato obligaba a recompilar.
+        this.mensajeCredencial = this.armarAvisoCredencial(res);
         this.cdr.detectChanges();
         if (!this.mensajeCredencial) {
           // Sin mensaje especial: cerrar directamente
@@ -402,7 +427,7 @@ export class TrabajadorListComponent implements OnInit {
     this.trabajadorParaCese = trabajador;
     this.motivoCese         = '';
     this.detalleMotivoCese  = '';
-    this.fechaCese          = new Date().toISOString().split('T')[0]; // Hoy por defecto
+    this.fechaCese          = fechaLocal(); // Hoy por defecto
     this.mostrarModalCese   = true;
     this.cdr.detectChanges();
   }
@@ -419,7 +444,7 @@ export class TrabajadorListComponent implements OnInit {
 procesarCese() {
     if (!this.trabajadorParaCese) return;
     if (!this.fechaCese) {
-      alert('Debe seleccionar una fecha de cese.');
+      this.aviso.error('Debe seleccionar una fecha de cese.');
       return;
     }
 
@@ -447,7 +472,7 @@ procesarCese() {
           this.cargarTrabajadores();
         } else {
           const mensaje = mensajeError(err, 'Error al cesar al trabajador.');
-          alert(mensaje);
+          this.aviso.exito(mensaje);
           console.error('Error al cesar al trabajador', err);
           this.cdr.detectChanges();
         }

@@ -66,3 +66,24 @@ export function fechaPe(valor: string | null | undefined,
                         modo: 'normal' | 'corta' | 'hora' | 'larga' = 'normal'): string {
   return new FechaPePipe().transform(valor, modo);
 }
+
+/**
+ * Fecha local en formato aaaa-mm-dd, sin pasar por UTC.
+ *
+ * ============================================================
+ * POR QUÉ NO SERVÍA toISOString()
+ * ============================================================
+ * toISOString() convierte a UTC. En Lima, que va cinco horas por detrás,
+ * cualquier consulta hecha a partir de las 19:00 devolvía el día
+ * siguiente. En una planta con turno noche eso no es un caso raro: es la
+ * hora a la que entra medio personal.
+ *
+ * El efecto era silencioso. El sistema pedía datos de un día equivocado y
+ * la pantalla salía vacía, sin error que lo explicara.
+ */
+export function fechaLocal(d: Date = new Date()): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
