@@ -49,7 +49,22 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (error.status === 403) {
-        console.error('Error 403: Permisos insuficientes.');
+        // El servidor ahora exige cambiar la contraseña temporal antes de
+        // usar el sistema (RN-07): responde 403 con este código a todo lo
+        // que no sea consultar el propio perfil o enviar la contraseña
+        // nueva. Antes la restricción vivía solo en la interfaz.
+        //
+        // Se lleva al portal del trabajador, que es donde el flujo de
+        // inicio de sesión abre el modal obligatorio. La guarda sobre la
+        // ruta actual evita el bucle: estando ya en el portal, sus propias
+        // cargas de datos devolverán 403 y no deben volver a navegar.
+        if (error.error?.codigo === 'PASSWORD_TEMPORAL') {
+          if (!router.url.startsWith('/mi-portal')) {
+            router.navigate(['/mi-portal'], { state: { forzarCambioPassword: true } });
+          }
+        } else {
+          console.error('Error 403: Permisos insuficientes.');
+        }
       }
 
       return throwError(() => error);

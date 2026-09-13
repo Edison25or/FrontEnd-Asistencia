@@ -91,6 +91,13 @@ export class TrabajadorListComponent implements OnInit {
    */
   conservarPuesto = true;
 
+  /**
+   * Fecha real del reingreso. Por defecto hoy. El backend no genera
+   * jornadas anteriores a ella ni admite que empiece antes del último cese.
+   */
+  fechaIngresoReingreso = fechaLocal();
+  errorReingreso = '';
+
   // --- MODAL DETALLE ---
   mostrarModalDetalle    = false;
   trabajadorDetalle: any = null;
@@ -147,10 +154,27 @@ export class TrabajadorListComponent implements OnInit {
       partes.push('Su contraseña pasó a ser el nuevo número de documento, '
                 + 'y deberá cambiarla al entrar.');
     }
+    if (res?.retiradoDeGrupo) {
+      partes.push('Al cambiar de área dejó de pertenecer a su grupo de trabajo: '
+                + 'el jefe de su nueva área debe incorporarlo a uno.');
+    }
     return partes.join(' ');
   }
 
   // --- MODAL RESET PASSWORD ---
+  // Reposición de carné (CU11, HU-03)
+  mostrarModalCarnet        = false;
+  trabajadorParaCarnet: any = null;
+  motivoCarnet              = 'Pérdida';
+  detalleCarnet             = '';
+  carnetExito               = false;
+  carnetError               = '';
+  isProcesandoCarnet        = false;
+  // Solo los casos en que el carné anterior queda fuera del control de la
+  // empresa. Si se dañó pero se tiene a la mano, basta con reimprimirlo
+  // desde la pantalla de Carnés: sale con el mismo código.
+  readonly motivosCarnet    = ['Pérdida', 'Robo', 'Deterioro, carné no recuperado', 'Otro'];
+
   mostrarModalReset        = false;
   trabajadorParaReset: any = null;
   resetExito               = false;
@@ -529,6 +553,8 @@ procesarCese() {
     this.trabajadorParaReingreso       = trabajador;
     this.areaSeleccionadaReingreso     = '';
     this.puestoSeleccionadoReingreso   = '';
+    this.fechaIngresoReingreso         = fechaLocal();
+    this.errorReingreso                = '';
     this.conservarPuesto               = true;
     this.puestosReingreso              = [];
     this.mostrarModalReingreso         = true;
@@ -578,9 +604,10 @@ procesarCese() {
       : Number(this.puestoSeleccionadoReingreso);
 
     this.isProcesandoModal = true;
+    this.errorReingreso    = '';
     this.cdr.detectChanges();
 
-    this.trabajadorService.reingresarTrabajador(id, idPuesto).subscribe({
+    this.trabajadorService.reingresarTrabajador(id, idPuesto, this.fechaIngresoReingreso || undefined).subscribe({
       next: () => {
         this.isProcesandoModal = false;
         this.cdr.detectChanges();
@@ -589,7 +616,65 @@ procesarCese() {
       },
       error: (err) => {
         this.isProcesandoModal = false;
-        console.error('Error al reingresar trabajador', err);
+        // Antes solo se escribía en consola: el modal quedaba abierto sin
+        // explicar por qué. Ahora hay validaciones de fecha que el usuario
+        // necesita leer.
+        this.errorReingreso = mensajeError(err, 'Error al reingresar al trabajador.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  // ==========================================
+  // REPOSICIÓN DE CARNÉ
+  // ==========================================
+  //
+  // Antes no existía: reponer un carné perdido obligaba a cesar al
+  // trabajador y reactivarlo, lo que abría un período laboral nuevo por
+  // un motivo puramente administrativo.
+
+  abrirModalCarnet(trabajador: any) {
+    this.trabajadorParaCarnet = trabajador;
+    this.motivoCarnet         = 'Pérdida';
+    this.detalleCarnet        = '';
+    this.carnetExito          = false;
+    this.carnetError          = '';
+    this.isProcesandoCarnet   = false;
+    this.mostrarModalCarnet   = true;
+    this.cdr.detectChanges();
+  }
+
+  cerrarModalCarnet() {
+    this.mostrarModalCarnet   = false;
+    this.trabajadorParaCarnet = null;
+    this.cdr.detectChanges();
+  }
+
+  procesarCarnet() {
+    if (!this.trabajadorParaCarnet) return;
+    if (this.motivoCarnet === 'Otro' && !this.detalleCarnet.trim()) {
+      this.carnetError = 'Indica el detalle del motivo.';
+      return;
+    }
+
+    const motivo = this.detalleCarnet.trim()
+      ? `${this.motivoCarnet}: ${this.detalleCarnet.trim()}`
+      : this.motivoCarnet;
+
+    this.isProcesandoCarnet = true;
+    this.carnetError        = '';
+    this.cdr.detectChanges();
+
+    this.trabajadorService.reponerCarnet(this.trabajadorParaCarnet.idTrabajador, motivo).subscribe({
+      next: () => {
+        this.carnetExito        = true;
+        this.isProcesandoCarnet = false;
+        this.cargarTrabajadores();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.carnetError        = mensajeError(err, 'No se pudo reponer el carné.');
+        this.isProcesandoCarnet = false;
         this.cdr.detectChanges();
       }
     });

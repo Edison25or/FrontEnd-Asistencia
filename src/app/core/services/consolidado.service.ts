@@ -45,6 +45,8 @@ export interface Consolidado {
   diasFalta:              number;
   diasPermiso:            number;
   diasFaltaJustificada:   number;
+  /** Feriados con turno programado en los que no se trabajó (RN-44). */
+  diasFeriadoNoLaborado:  number;
 
   minTotalTardanza:       number;
   minTotalSalTemprana:    number;

@@ -151,7 +151,7 @@
                     {{ col.etiqueta }}
                   </th>
                   <th colspan="3" class="th-grupo">Totales</th>
-                  <th colspan="3" class="th-grupo">Ausencias (días)</th>
+                  <th colspan="4" class="th-grupo">Ausencias (días)</th>
                   <th rowspan="2" class="th-grupo">Estado</th>
                   <th rowspan="2" class="th-grupo">Obs.</th>
                 </tr>
@@ -166,6 +166,13 @@
                   <th class="th-sub">Falta</th>
                   <th class="th-sub">Permiso</th>
                   <th class="th-sub">Justif.</th>
+                  <!--
+                    Feriado no laborado: la planta opera los feriados, de modo
+                    que puede haber turno programado. Si el trabajador no viene,
+                    RN-44 excusa la ausencia y no es falta, pero tampoco es un
+                    día trabajado. Antes esos días no aparecían en ninguna parte.
+                  -->
+                  <th class="th-sub">Feriado</th>
                 </tr>
               </thead>
 
@@ -210,6 +217,12 @@
                       {{ c.diasFaltaJustificada }}
                     </span>
                     <span *ngIf="c.diasFaltaJustificada === 0">-</span>
+                  </td>
+                  <td class="td-c">
+                    <span class="chip-feriado-dia" *ngIf="c.diasFeriadoNoLaborado > 0">
+                      {{ c.diasFeriadoNoLaborado }}
+                    </span>
+                    <span *ngIf="!c.diasFeriadoNoLaborado">-</span>
                   </td>
 
                   <td class="td-c">

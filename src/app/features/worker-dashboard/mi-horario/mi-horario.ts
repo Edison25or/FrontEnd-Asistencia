@@ -17,6 +17,16 @@ export class MiHorarioComponent implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
 
   semanaActual:    { label: string; esquema: any; prog: any } | null = null;
+
+  /**
+   * Día de hoy en numeración ISO (1 = lunes … 7 = domingo), que es la que
+   * usa HorarioDia.diaSemana en el servidor. getDay() del navegador cuenta
+   * 0 = domingo, de ahí la conversión.
+   *
+   * Se calcula una vez al construir el componente: la pantalla no vive
+   * abierta el tiempo suficiente para que cambie el día.
+   */
+  readonly diaHoyIso = new Date().getDay() === 0 ? 7 : new Date().getDay();
   semanaSiguiente: { label: string; esquema: any; prog: any } | null = null;
   cargando = true;
   error = '';
@@ -29,9 +39,11 @@ export class MiHorarioComponent implements OnInit {
     const inicioSiguiente = this.getSabado(1);
 
     // Cargar semana actual
-    this.progService.getBySemana(inicioActual).subscribe({
+    // getMiSemana y no getBySemana: este último devuelve el área completa
+    // cuando quien consulta es Jefe.
+    this.progService.getMiSemana(inicioActual).subscribe({
       next: (progs) => {
-        // Backend ya filtra solo las del trabajador autenticado
+        // El backend devuelve solo las del trabajador autenticado
         const prog = progs[0];
         if (prog) {
           this.esquemaService.getById(prog.idEsquema).subscribe({
@@ -60,7 +72,7 @@ export class MiHorarioComponent implements OnInit {
     });
 
     // Cargar semana siguiente
-    this.progService.getBySemana(inicioSiguiente).subscribe({
+    this.progService.getMiSemana(inicioSiguiente).subscribe({
       next: (progs) => {
         const prog = progs[0];
         if (prog) {
@@ -101,6 +113,29 @@ export class MiHorarioComponent implements OnInit {
    * La fecha se arma con los componentes locales, de modo que el día que
    * se envía es el que la persona tiene en su reloj.
    */
+  /**
+   * Marca el día en curso dentro de la semana actual.
+   *
+   * Solo se usa en la semana actual: en la próxima no hay un "hoy" que
+   * señalar, y resaltar un día ahí induciría a error.
+   */
+  esHoy(dia: any): boolean {
+    return dia?.diaSemana === this.diaHoyIso;
+  }
+
+  /**
+   * Total del esquema: las horas netas y, si el esquema las programa, las
+   * extra. Mostrar solo las netas dejaba fuera tiempo que el trabajador sí
+   * tiene programado, y el total no cuadraba con la suma de sus días.
+   */
+  totalEsquema(esquema: any): string {
+    const netas = esquema?.totalHorasNetas ?? '00:00';
+    const extra = esquema?.totalHorasExtra;
+    return (!extra || extra === '00:00')
+      ? `${netas} hrs netas`
+      : `${netas} netas + ${extra} extra`;
+  }
+
   private getSabado(offset: number): string {
     const hoy = new Date();
 

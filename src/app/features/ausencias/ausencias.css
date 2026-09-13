@@ -393,3 +393,20 @@
   background: #f1f5f9; color: #94a3b8;
   font-size: .69rem; font-weight: 700;
 }
+
+/* Sustento posterior: mismo formato que el botón de eliminar, en el tono
+   del chip "recibido" para que se lea como parte del sustento. */
+.col-acciones { white-space: nowrap; }
+.col-acciones button + button { margin-left: 6px; }
+.btn-icon-sustento {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: #15803d;
+  line-height: 0;
+}
+.btn-icon-sustento:hover { background: #f0fdf4; border-color: #bbf7d0; }
+.btn-icon-sustento:focus-visible,
+.btn-icon-del:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

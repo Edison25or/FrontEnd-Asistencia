@@ -27,6 +27,23 @@
 .dia-nombre { font-size: 0.75rem; font-weight: 700; color: #555; text-transform: uppercase; }
 .dia-hora   { font-size: 0.78rem; color: #333; font-weight: 500; }
 .dia-netas  { font-size: 0.72rem; color: #8cc63f; font-weight: 600; }
+/* Ámbar: tiempo programado que no son horas netas. Se distingue del verde
+   para que no se lean como un solo número. */
+.dia-extra  { font-size: 0.68rem; color: #d9902a; font-weight: 600; }
 .dia-desc   { font-size: 0.72rem; color: #aaa; font-style: italic; }
+
+/* ── Día en curso ──────────────────────────────────────────────
+   Fondo en el verde de la marca y texto en blanco. Se sube el
+   contraste de las horas netas, que en su verde habitual quedarían
+   ilegibles sobre este fondo. */
+.dia-item.hoy             { background: #8cc63f; }
+.dia-item.hoy .dia-nombre,
+.dia-item.hoy .dia-hora,
+.dia-item.hoy .dia-netas,
+.dia-item.hoy .dia-extra,
+.dia-item.hoy .dia-desc   { color: #fff; }
+.dia-item.hoy .dia-desc   { font-style: italic; opacity: 0.85; }
+/* Un descanso que cae hoy sigue atenuado, pero se distingue del resto */
+.dia-item.hoy.descanso    { background: #a8d466; opacity: 1; }
 
 .sin-horario { text-align: center; padding: 1.5rem; color: #aaa; font-size: 0.9rem; }

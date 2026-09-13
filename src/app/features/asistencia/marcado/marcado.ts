@@ -253,6 +253,15 @@ export class MarcadoComponent implements OnInit, OnDestroy {
       case 'CONFIRMAR_ANTICIPADA':
         return '¿Vas a hacer horas extra? Vuelve a pasar tu código para confirmar.';
 
+      case 'ENTRADA_ANTICIPADA':
+        // Segundo escaneo recibido: la entrada anticipada queda guardada,
+        // pero los minutos previos no cuentan hasta que el jefe los valide.
+        return 'Entrada registrada. Tu jefe revisará el tiempo adicional.';
+
+      case 'ADICIONAL_REVISION':
+        // Ya tenía la jornada completa: se guarda como no programada.
+        return 'Marcación guardada fuera de tu horario. Tu jefe la revisará.';
+
       default:
         // Respaldo para respuestas que aún traigan el texto del servidor.
         return registro?.mensaje || 'Marcación registrada.';

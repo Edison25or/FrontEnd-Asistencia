@@ -107,3 +107,14 @@
   color: #9d174d;
   font-weight: 600;
 }
+
+/* Feriado no laborado: mismo tono que en el consolidado */
+.chip-feriado-dia {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: .78rem;
+  font-weight: 600;
+  background: #eef2ff;
+  color: #4338ca;
+}

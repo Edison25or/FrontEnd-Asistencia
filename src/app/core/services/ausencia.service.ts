@@ -12,6 +12,24 @@ export interface PermisoRequest {
   fechaInicio:    string;   // yyyy-MM-dd
   fechaFin:       string;
   comentario:     string;
+  /** Solo lo toma en cuenta el servidor si quien registra es de la administración. */
+  sustentoRecibido?:   boolean;
+  referenciaSustento?: string | null;
+}
+
+/** Marca o corrige el sustento de una ausencia ya registrada (solo administración). */
+export interface ActualizarSustentoRequest {
+  sustentoRecibido:   boolean;
+  referenciaSustento: string | null;
+}
+
+/** Campos de sustento comunes a permisos y faltas justificadas. */
+export interface SustentoResponse {
+  sustentoRecibido:      boolean;
+  /** Solo llega a la administración: puede revelar el motivo de la ausencia. */
+  referenciaSustento:    string | null;
+  sustentoConfirmadoPor: string | null;
+  sustentoConfirmadoEn:  string | null;
 }
 
 export interface PermisoResponse {
@@ -24,11 +42,15 @@ export interface PermisoResponse {
   comentario:       string;
   /** true si se registró fuera del plazo estándar (RN-30). No bloquea. */
   fueraDePlazo:     boolean;
+  /** Jornadas del rango ya consolidadas o en quincena cerrada (RN-32). */
+  jornadasYaCerradas: number;
   registradoPor:    string | null;
   fechaRegistro:    string;
   /** Pre-registros que dejaron de contar como falta (RN-44). */
   preRegistrosNeutralizados: number;
 }
+
+export interface PermisoResponse extends SustentoResponse {}
 
 export interface FaltaJustificadaRequest {
   idTrabajador:   number;
@@ -36,6 +58,8 @@ export interface FaltaJustificadaRequest {
   fechaInicio:    string;
   fechaFin:       string;
   comentario:     string;
+  sustentoRecibido?:   boolean;
+  referenciaSustento?: string | null;
 }
 
 export interface FaltaJustificadaResponse {
@@ -50,6 +74,8 @@ export interface FaltaJustificadaResponse {
   fechaRegistro:      string;
   preRegistrosNeutralizados: number;
 }
+
+export interface FaltaJustificadaResponse extends SustentoResponse {}
 
 // ════════════════════════════════════════════════════════════
 // SERVICIO
@@ -99,6 +125,17 @@ export class AusenciaService {
 
   eliminarFalta(idFalta: number): Observable<number> {
     return this.http.delete<number>(`${this.api}/faltas-justificadas/${idFalta}`);
+  }
+
+  /** Marca o corrige el sustento de un permiso ya registrado. */
+  actualizarSustentoPermiso(idPermiso: number, req: ActualizarSustentoRequest): Observable<PermisoResponse> {
+    return this.http.patch<PermisoResponse>(`${this.api}/permisos/${idPermiso}/sustento`, req);
+  }
+
+  /** Marca o corrige el sustento de una falta justificada ya registrada. */
+  actualizarSustentoFalta(idFalta: number, req: ActualizarSustentoRequest): Observable<FaltaJustificadaResponse> {
+    return this.http.patch<FaltaJustificadaResponse>(
+      `${this.api}/faltas-justificadas/${idFalta}/sustento`, req);
   }
 
   listarPermisos(idTrabajador: number, desde: string, hasta: string): Observable<PermisoResponse[]> {

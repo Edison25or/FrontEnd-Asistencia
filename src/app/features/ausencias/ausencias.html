@@ -41,13 +41,41 @@
           </div>
         } @else {
           <div class="ok-detalle">
-            No había jornadas programadas en ese rango, o ya estaban consolidadas.
+            No había jornadas programadas en ese rango que la ausencia pudiera cubrir.
           </div>
         }
-        @if (ultimoResultado.fueraDePlazo) {
+
+        <!--
+          Se separa del caso anterior. Que no haya jornadas programadas es
+          normal; que las haya pero ya estén cerradas significa que el
+          registro NO corrige el pago, y eso hay que decirlo (RN-32).
+        -->
+        @if (ultimoResultado.yaCerradas > 0) {
           <div class="ok-aviso">
-            Se registró fuera del plazo estándar de una a dos semanas de anticipación.
-            Queda marcado como excepción, pero es válido.
+            <strong>{{ ultimoResultado.yaCerradas }} jornada(s) del rango ya estaban
+            consolidadas o pertenecen a una quincena cerrada.</strong>
+            La ausencia queda registrada como información histórica, pero no
+            modifica el consolidado ya emitido. Si hay que corregir el pago,
+            el Superadministrador debe reabrir la quincena y regenerarlo.
+          </div>
+        }
+
+        @if (ultimoResultado.retroactivo) {
+          <!--
+            RN-30 habla de anticipación, lo que presupone una fecha futura.
+            Una ausencia cuyo rango ya terminó es otra cosa, y el sistema
+            tiene una figura propia para ella.
+          -->
+          <div class="ok-aviso">
+            El rango registrado ya terminó. Si la ausencia fue imprevista y se
+            justificó después, la figura que corresponde es una
+            <strong>falta justificada</strong>, no un permiso: el permiso
+            documenta una ausencia prevista con anticipación.
+          </div>
+        } @else if (ultimoResultado.fueraDePlazo) {
+          <div class="ok-aviso">
+            Se registró fuera del plazo estándar de una a dos semanas de
+            anticipación. Queda marcado como excepción, pero es válido (RN-30).
           </div>
         }
         }
@@ -140,8 +168,7 @@
               <td class="col-motivo">{{ item.comentario }}</td>
               <td style="text-align:center">
                 @if (item.sustentoRecibido) {
-                  <span class="chip-sustento"
-                        [title]="item.referenciaSustento || 'Documentación recibida'">
+                  <span class="chip-sustento" [title]="tooltipSustento(item)">
                     recibido
                   </span>
                 } @else {
@@ -152,7 +179,14 @@
               </td>
               <td class="col-usuario">{{ item.registradoPor || '-' }}</td>
               @if (esJefeOSuperior()) {
-                <td style="text-align:center">
+                <td style="text-align:center" class="col-acciones">
+                  @if (puedeRegistrarSustento()) {
+                    <button class="btn-icon-sustento"
+                            [title]="item.sustentoRecibido ? 'Editar sustento' : 'Registrar sustento recibido'"
+                            (click)="abrirSustento(item)">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+                    </button>
+                  }
                   <!--
                     No hay botón de editar: cambiar el rango obligaría a
                     revertir y volver a neutralizar en una sola operación, y
@@ -168,7 +202,7 @@
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="esJefeOSuperior() ? 7 : 6" class="estado-vacio">
+              <td [attr.colspan]="totalColumnas" class="estado-vacio">
                 Sin registros para {{ nombreTrabajador(consultaTrabajador) }}
                 en el rango indicado.
               </td>
@@ -264,6 +298,7 @@
           de un certificado médico trae obligaciones que el resto del
           sistema no tiene.
         -->
+        @if (puedeRegistrarSustento()) {
         <div class="campo">
           <label class="check-sustento">
             <input type="checkbox" formControlName="sustentoRecibido">
@@ -280,12 +315,15 @@
             <label>Referencia del sustento <span class="opcional">(opcional)</span></label>
             <input type="text" formControlName="referenciaSustento"
                    class="input-text" maxlength="200"
-                   placeholder="Correo del 08/09 de Jhan Malca, asunto &quot;Descanso médico 08 al 10&quot;">
+                   placeholder="Correo del 08/09 de Jhan Malca, asunto &quot;Sustento ausencia 08 al 10&quot;">
             <span class="campo-ayuda">
               Dónde encontrar el documento: el correo que lo trajo, un
-              folder físico o el expediente donde quedó archivado.
+              folder físico o el expediente. Indica dónde está, no el
+              diagnóstico ni el detalle médico: la referencia la ve todo
+              quien pueda consultar esta ausencia.
             </span>
           </div>
+        }
         }
 
         <p class="modal-nota">
@@ -348,6 +386,68 @@
         <button class="btn-cancelar" (click)="cerrarModalEliminar()" [disabled]="guardando">Cancelar</button>
         <button class="btn-eliminar" (click)="eliminar()" [disabled]="guardando">
           {{ guardando ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: SUSTENTO POSTERIOR                              -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (itemSustento) {
+  <div class="modal-overlay" (click)="cerrarSustento()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>Sustento documental</h3>
+        <button class="modal-close" (click)="cerrarSustento()">×</button>
+      </div>
+
+      <p>
+        <strong>{{ itemSustento.tipoAusencia }}</strong> de
+        {{ itemSustento.trabajadorNombre }}, del
+        {{ itemSustento.fechaInicio | fechaPe }} al {{ itemSustento.fechaFin | fechaPe }}.
+      </p>
+
+      <div class="campo">
+        <label class="check-sustento">
+          <input type="checkbox" [(ngModel)]="sustentoRecibidoEdit">
+          <span>
+            <strong>Documentación recibida</strong>
+            <em>Quedará registrado que la confirmaste tú, con fecha y hora.</em>
+          </span>
+        </label>
+      </div>
+
+      @if (sustentoRecibidoEdit) {
+        <div class="campo">
+          <label>Referencia del sustento <span class="opcional">(opcional)</span></label>
+          <input type="text" [(ngModel)]="referenciaSustentoEdit"
+                 class="input-text" maxlength="200"
+                 placeholder="Correo del 08/09 de Jhan Malca, asunto &quot;Sustento ausencia 08 al 10&quot;">
+          <span class="campo-ayuda">
+            Indica dónde está el documento, no el diagnóstico ni el detalle médico.
+          </span>
+        </div>
+      }
+
+      @if (itemSustento.sustentoConfirmadoPor) {
+        <p class="modal-nota">
+          Confirmado antes por {{ itemSustento.sustentoConfirmadoPor }}.
+        </p>
+      }
+
+      @if (errorSustento) {
+        <div class="modal-error">{{ errorSustento }}</div>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-cancelar" (click)="cerrarSustento()" [disabled]="guardando">Cancelar</button>
+        <button class="btn-guardar" (click)="guardarSustento()" [disabled]="guardando">
+          {{ guardando ? 'Guardando…' : 'Guardar sustento' }}
         </button>
       </div>
 

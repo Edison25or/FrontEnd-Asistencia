@@ -43,11 +43,14 @@ export class MiAsistenciaComponent implements OnInit {
 
     const { inicio, fin } = this.calcularFechas(rango);
 
-    this.reporteService.getReporte({
-      fechaInicio: inicio,
-      fechaFin: fin
-      // No envía idTrabajador - el backend lo fuerza al usuario autenticado
-    }).subscribe({
+    // Punto de acceso dedicado del portal: el backend toma el trabajador
+    // del token, sin mirar el rol.
+    //
+    // Antes se llamaba al reporte general sin idTrabajador, dando por
+    // hecho que el backend lo deduciría. Para el Trabajador funcionaba,
+    // pero un Jefe que abría su propio portal recibía las jornadas de
+    // toda su área.
+    this.reporteService.getMiAsistencia(inicio, fin).subscribe({
       next: (data) => {
         this.registros = this.filtrarRegistros(data);
         this.cargando = false;
@@ -75,7 +78,14 @@ export class MiAsistenciaComponent implements OnInit {
       })
       .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
 
-    return proximo ? [...conRegistro, proximo] : conRegistro;
+    // Orden descendente: la jornada más reciente primero. Es lo que se
+    // consulta a diario, y así no hay que desplazarse hasta el final de la
+    // lista para ver lo de hoy.
+    //
+    // La próxima jornada programada, cuando existe, encabeza la lista: es
+    // el único registro futuro y queda por encima de los ya ocurridos.
+    const lista_ = proximo ? [...conRegistro, proximo] : conRegistro;
+    return lista_.sort((a, b) => b.fecha.localeCompare(a.fecha));
   }
 
   private calcularFechas(rango: Rango): { inicio: string; fin: string } {

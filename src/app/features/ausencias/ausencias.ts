@@ -126,7 +126,13 @@ export class AusenciasComponent implements OnInit {
   form!: FormGroup;
 
   /** Resultado del último registro, para mostrar el efecto. */
-  ultimoResultado: { titulo: string; neutralizados: number; fueraDePlazo: boolean } | null = null;
+  ultimoResultado: {
+    titulo: string;
+    neutralizados: number;
+    fueraDePlazo: boolean;
+    yaCerradas: number;
+    retroactivo: boolean;
+  } | null = null;
 
   ngOnInit() {
     this.rolUsuario = this.auth.getRolUsuario() || '';
@@ -260,9 +266,21 @@ export class AusenciasComponent implements OnInit {
     this.guardando  = true;
     this.modalError = '';
 
+    // Sustento normalizado antes de enviar. Sin casilla no viaja referencia:
+    // el campo se oculta al desmarcar, pero conservaba lo escrito y llegaba
+    // al servidor como "pendiente con referencia". Y solo la administración
+    // lo marca (D5); el servidor aplica la misma regla.
+    const recibido = this.puedeRegistrarSustento() && v.sustentoRecibido === true;
+    const referencia = recibido ? (v.referenciaSustento || '').trim() : '';
+    const payload = {
+      ...v,
+      sustentoRecibido:   recibido,
+      referenciaSustento: referencia || null
+    };
+
     const obs: Observable<any> = this.tabActual === 'permisos'
-      ? this.svc.registrarPermiso(v)
-      : this.svc.registrarFalta(v);
+      ? this.svc.registrarPermiso(payload)
+      : this.svc.registrarFalta(payload);
 
     obs.subscribe({
       next: (r: any) => {
@@ -276,7 +294,12 @@ export class AusenciasComponent implements OnInit {
           titulo: `${r.tipoAusencia} de ${r.trabajadorNombre}, `
                 + `del ${r.fechaInicio} al ${r.fechaFin}`,
           neutralizados: r.preRegistrosNeutralizados,
-          fueraDePlazo:  r.fueraDePlazo === true
+          fueraDePlazo:  r.fueraDePlazo === true,
+          yaCerradas:    r.jornadasYaCerradas ?? 0,
+          // Una ausencia cuyo rango ya terminó no es "poca anticipación":
+          // es una ausencia consumada. El aviso cambia en consecuencia.
+          retroactivo:   this.tabActual === 'permisos'
+                         && !!r.fechaFin && r.fechaFin < fechaLocal()
         };
 
         if (this.consultaTrabajador === v.idTrabajador) this.consultar();
@@ -338,7 +361,9 @@ export class AusenciasComponent implements OnInit {
         this.ultimoResultado = {
           titulo: 'Ausencia eliminada',
           neutralizados: -1,
-          fueraDePlazo: false
+          fueraDePlazo: false,
+          yaCerradas:   0,
+          retroactivo:  false
         };
         this.revertidos = revertidos;
         this.consultar();
@@ -382,5 +407,86 @@ export class AusenciasComponent implements OnInit {
 
   esJefeOSuperior(): boolean {
     return ['ROLE_JEFE', 'ROLE_ADMIN', 'ROLE_SUPERADMIN'].includes(this.rolUsuario);
+  }
+
+  /**
+   * Quien registra la ausencia registra también su sustento (RN-29).
+   *
+   * El Jefe es quien recibe el certificado o la citación, de modo que
+   * separar ambas cosas obligaba a que dos personas tocaran el mismo caso.
+   * La segregación sigue vigente por otra vía: el servidor impide
+   * registrar la propia ausencia o la de un par, y limita al Jefe a su
+   * área.
+   */
+  puedeRegistrarSustento(): boolean {
+    return this.esJefeOSuperior();
+  }
+
+  /** Columnas de la tabla, para que el mensaje vacío ocupe toda la fila. */
+  get totalColumnas(): number {
+    return this.esJefeOSuperior() ? 8 : 7;
+  }
+
+  /** Texto del chip de sustento: quién lo confirmó y dónde encontrarlo. */
+  tooltipSustento(item: any): string {
+    const partes: string[] = [];
+    if (item.referenciaSustento) partes.push(item.referenciaSustento);
+    if (item.sustentoConfirmadoPor) partes.push(`Confirmado por ${item.sustentoConfirmadoPor}`);
+    return partes.length ? partes.join(' — ') : 'Documentación recibida';
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // SUSTENTO POSTERIOR
+  // ════════════════════════════════════════════════════════════
+  //
+  // El caso frecuente es registrar la ausencia y recibir el certificado
+  // días después. Antes solo podía marcarse al crear, y la única salida
+  // era eliminar y volver a registrar, lo que la marcaba fuera de plazo.
+
+  itemSustento: any = null;
+  sustentoRecibidoEdit = false;
+  referenciaSustentoEdit = '';
+  errorSustento = '';
+
+  abrirSustento(item: any) {
+    this.itemSustento           = item;
+    this.sustentoRecibidoEdit   = item.sustentoRecibido === true;
+    this.referenciaSustentoEdit = item.referenciaSustento || '';
+    this.errorSustento          = '';
+  }
+
+  cerrarSustento() {
+    this.itemSustento = null;
+  }
+
+  guardarSustento() {
+    if (!this.itemSustento) return;
+    this.guardando     = true;
+    this.errorSustento = '';
+
+    const req = {
+      sustentoRecibido:   this.sustentoRecibidoEdit,
+      referenciaSustento: this.sustentoRecibidoEdit
+        ? (this.referenciaSustentoEdit.trim() || null)
+        : null
+    };
+
+    const obs: Observable<any> = this.tabActual === 'permisos'
+      ? this.svc.actualizarSustentoPermiso(this.itemSustento.idPermiso, req)
+      : this.svc.actualizarSustentoFalta(this.itemSustento.idFaltaJustificada, req);
+
+    obs.subscribe({
+      next: () => {
+        this.guardando = false;
+        this.cerrarSustento();
+        this.consultar();
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.errorSustento = mensajeError(err, 'Error al guardar el sustento.');
+        this.guardando     = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

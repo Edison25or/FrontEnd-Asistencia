@@ -309,33 +309,41 @@ export class ProgramacionSemanalComponent implements OnInit {
   quitarGrupoDeEsquema() {
     if (!this.grupoParaQuitar || !this.esquemaParaQuitar) return;
 
-    const aEliminar: any[] = this.grupoParaQuitar.programaciones ?? [];
-
-    if (!aEliminar.length) {
-      this.mostrarModalEliminarGrupo = false;
-      this.mostrarError('No se encontraron asignaciones que quitar para este grupo.');
-      return;
-    }
-
     this.isProcesando = true;
-    forkJoin(aEliminar.map((p: any) => this.programacionService.eliminar(p.idProgramacion)))
-      .subscribe({
-        next: () => {
-          this.isProcesando              = false;
-          this.mostrarModalEliminarGrupo = false;
-          this.grupoParaQuitar           = null;
-          this.esquemaParaQuitar         = null;
-          this.cargarProgramaciones();
-        },
-        error: (err: any) => {
-          // Antes el error se tragaba sin avisar. Una semana ya pasada,
-          // por ejemplo, la rechaza el backend y el usuario no veia nada.
-          this.isProcesando = false;
-          this.mostrarModalEliminarGrupo = false;
-          this.mostrarError(mensajeError(err, 'No se pudo quitar el grupo del esquema.'));
-          this.cdr.detectChanges();
-        }
-      });
+
+    // Una sola llamada, no una por integrante.
+    //
+    // Antes se lanzaban N peticiones en paralelo con forkJoin. Si una
+    // fallaba —por ejemplo, un integrante que ya había marcado— las demás
+    // ya se habían ejecutado y no hay forma de deshacerlas: el grupo
+    // quedaba a medias, con unos integrantes programados y otros no.
+    //
+    // Y ese estado era confuso: la pantalla agrupa las programaciones por
+    // grupo, así que el grupo seguía apareciendo como asignado por los que
+    // quedaban, pero tampoco volvía al panel de disponibles. Parecía
+    // haberse perdido.
+    this.programacionService.eliminarPorGrupo(
+      this.grupoParaQuitar.esIndividual ? null : this.grupoParaQuitar.idGrupo,
+      this.semanaSeleccionada,
+      this.esquemaParaQuitar.idEsquema
+    ).subscribe({
+      next: () => {
+        this.isProcesando              = false;
+        this.mostrarModalEliminarGrupo = false;
+        this.grupoParaQuitar           = null;
+        this.esquemaParaQuitar         = null;
+        this.cargarProgramaciones();
+      },
+      error: (err: any) => {
+        // El servidor revierte la operación completa, de modo que el grupo
+        // queda como estaba. Solo hay que informar.
+        this.isProcesando = false;
+        this.mostrarModalEliminarGrupo = false;
+        this.mostrarError(mensajeError(err, 'No se pudo quitar el grupo del esquema.'));
+        this.cargarProgramaciones();
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   // ── Confirmación final de semana (punto 5) ────────────────

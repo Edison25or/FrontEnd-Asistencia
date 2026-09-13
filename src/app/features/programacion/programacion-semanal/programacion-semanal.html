@@ -37,9 +37,11 @@
               [disabled]="!semanaSeleccionada || isProcesando || esSemanaPassada()"
               [title]="esSemanaPassada()
                        ? 'La semana ya terminó y no puede confirmarse'
-                       : 'Genera los registros de asistencia de la semana'">
+                       : (rolUsuario === 'ROLE_JEFE'
+                          ? 'Genera los registros de asistencia de tu área para la semana'
+                          : 'Genera los registros de asistencia de toda la empresa para la semana')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Confirmar semana
+        {{ rolUsuario === 'ROLE_JEFE' ? 'Confirmar semana del área' : 'Confirmar semana' }}
       </button>
 
       @if (esSemanaPassada() && semanaSeleccionada) {
@@ -79,7 +81,24 @@
             <div class="esquema-card-top">
               <span class="esquema-nombre">{{ e.nombre }}</span>
               <div class="esquema-meta">
-                @if (e.totalHorasNetas) { <span class="badge-horas">{{ e.totalHorasNetas }}/sem</span> }
+                <!--
+                  Netas y extra por separado, y el bruto al pasar el cursor.
+                  Con solo las netas, el Jefe no veía el tiempo adicional que
+                  el esquema ya tiene programado, que es justamente lo que
+                  distingue a un esquema de otro al asignar un grupo.
+                -->
+                @if (e.totalHorasNetas) {
+                  <span class="badge-horas"
+                        [title]="e.totalHorasBrutas ? 'Total bruto: ' + e.totalHorasBrutas + ' por semana' : ''">
+                    {{ e.totalHorasNetas }}/sem
+                  </span>
+                }
+                @if (e.totalHorasExtra && e.totalHorasExtra !== '00:00') {
+                  <span class="badge-extra"
+                        title="Horas extra ya programadas en el esquema, además de las netas">
+                    + {{ e.totalHorasExtra }} extra
+                  </span>
+                }
                 @if (e.toleranciaMinutos) { <span class="badge-tol">Tol. {{ e.toleranciaMinutos }}'</span> }
                 @if (esSemanaPassada()) {
                   <span class="badge-readonly">

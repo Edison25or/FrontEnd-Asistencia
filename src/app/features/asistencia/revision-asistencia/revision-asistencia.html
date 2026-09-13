@@ -104,8 +104,17 @@
             número mezclaría dos situaciones con salidas distintas.
           -->
           <span class="cnt cnt-naranja" *ngIf="totalBloqueantes > 0"
-                title="Impiden generar el consolidado hasta resolverse">
+                title="Impiden generar el consolidado hasta resolverse: jornadas ya vencidas sin marcación, con un solo extremo marcado, o pendientes de validar">
             {{ totalBloqueantes }} bloquean el cierre
+          </span>
+          <!--
+            Las jornadas de hoy y de los días que faltan no son un pendiente:
+            nadie puede resolverlas todavía. Se muestran aparte para que no
+            se confundan con las que sí exigen una decisión.
+          -->
+          <span class="cnt cnt-gris" *ngIf="totalPorVenir > 0"
+                title="Jornadas de hoy o de días posteriores. Se resolverán solas al marcarse o al vencer su ventana.">
+            {{ totalPorVenir }} por venir
           </span>
           <span class="cnt cnt-rojo" *ngIf="totalFaltasSinConfirmar > 0"
                 title="Las generó el cierre diario. No bloquean, pero conviene confirmarlas.">
@@ -301,8 +310,12 @@
 
                     <td class="td-accion">
                       @if (puedeValidar(a)) {
+                        <!-- El título anticipa qué se va a hacer: una jornada
+                             incompleta no se valida, se completa. -->
                         <button class="btn-revisar" (click)="abrirModalVal(a)"
-                                [title]="a.estado === 'REVISADO' ? 'Editar revisión' : 'Revisar'">
+                                [title]="esIncompleta(a)
+                                           ? 'Completar marcación'
+                                           : (a.estado === 'REVISADO' ? 'Editar revisión' : 'Revisar')">
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                       }
@@ -494,7 +507,73 @@
           salen vacíos y no hay minutos que aprobar. Presentarlos ahí
           pedía una decisión sobre algo que no existe.
         -->
-        @if (esFalta(asistenciaVal)) {
+        @if (esIncompleta(asistenciaVal)) {
+
+          <!--
+            Jornada con un solo extremo marcado.
+
+            Aquí no cabe validar tiempos: sin ambos extremos no hay jornada
+            de la que derivar minutos fuera de programación. Lo que falta es
+            registrar la marcación que no se tomó.
+          -->
+          <div class="falta-explica">
+            <div class="fe-titulo">Qué ocurrió</div>
+            <p>
+              El trabajador registró su
+              <strong>{{ extremoFaltante(asistenciaVal) === 'salida' ? 'entrada' : 'salida' }}</strong>,
+              pero no su
+              <strong>{{ extremoFaltante(asistenciaVal) }}</strong>.
+              El cierre diario marcó la jornada como incompleta y no dedujo
+              ninguna hora: el sistema nunca inventa una marcación.
+            </p>
+
+            <div class="fe-titulo">Qué corresponde hacer</div>
+            <p>
+              Completar la marcación con la hora real, contrastada con el
+              cuaderno de contingencias o con el supervisor de turno. Los
+              campos vienen con el horario programado como sugerencia;
+              corrígelos si la hora real fue otra.
+            </p>
+            <p>
+              Mientras la jornada siga incompleta, permanece en los pendientes
+              y bloquea el cierre de la quincena.
+            </p>
+          </div>
+
+          <div class="tnp-seccion">
+            <div class="tnp-titulo">Completar la marcación</div>
+
+            <div class="form-group">
+              <label>
+                Entrada
+                @if (!asistenciaVal.ingresoReal) { <span class="opcional">(falta)</span> }
+              </label>
+              <input type="datetime-local" class="input-field" [(ngModel)]="corrIngreso">
+            </div>
+
+            <div class="form-group">
+              <label>
+                Salida
+                @if (!asistenciaVal.salidaReal) { <span class="opcional">(falta)</span> }
+              </label>
+              <input type="datetime-local" class="input-field" [(ngModel)]="corrSalida">
+              <small class="hint-campo">
+                En el turno noche la salida cae en el día siguiente. Revisa la
+                fecha, no solo la hora.
+              </small>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Motivo</label>
+            <textarea [(ngModel)]="valObservacion" class="input-area" rows="2"
+                      placeholder="Por ejemplo: hora tomada del cuaderno de contingencias, confirmada con el supervisor"></textarea>
+            <small class="hint-campo">
+              Obligatorio: deja constancia de dónde sale la hora que registras.
+            </small>
+          </div>
+
+        } @else if (esFalta(asistenciaVal)) {
 
           <div class="falta-explica">
             <div class="fe-titulo">Por qué figura como falta injustificada</div>
@@ -626,10 +705,16 @@
         }
 
 
-        <!-- Horas totales estimadas -->
+        <!-- Horas totales estimadas. En una jornada incompleta no hay
+             ninguna calculada todavía: mostrar un guion sin explicación
+             hacía pensar que el dato se había perdido. -->
         <div class="horas-preview">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Horas totales actuales: <strong>{{ formatMin(asistenciaVal.minHorasTotales) }}</strong>
+          @if (esIncompleta(asistenciaVal)) {
+            Sin horas calculadas: la jornada está incompleta.
+          } @else {
+            Horas totales actuales: <strong>{{ formatMin(asistenciaVal.minHorasTotales) }}</strong>
+          }
           @if (asistenciaVal.revisadoPor) {
             · Última revisión: <em>{{ asistenciaVal.revisadoPor }}</em>
           }
@@ -637,7 +722,11 @@
       </div>
       <div class="modal-footer">
         <button class="btn-cancelar" (click)="mostrarModalVal=false" [disabled]="isProcesando">Cancelar</button>
-        @if (esFalta(asistenciaVal)) {
+        @if (esIncompleta(asistenciaVal)) {
+          <button class="btn-guardar" (click)="guardarCorreccion()" [disabled]="isProcesando">
+            {{ isProcesando ? 'Guardando...' : 'Completar marcación' }}
+          </button>
+        } @else if (esFalta(asistenciaVal)) {
           <button class="btn-guardar" (click)="confirmarRevision()" [disabled]="isProcesando">
             {{ isProcesando ? 'Guardando...' : 'Confirmar que la revisé' }}
           </button>

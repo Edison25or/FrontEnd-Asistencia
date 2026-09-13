@@ -24,6 +24,21 @@ export class ReporteService {
     return this.http.get<any[]>(this.apiUrl, { params });
   }
 
+  /**
+   * "Mi asistencia" del portal personal: solo las jornadas del usuario
+   * autenticado, sea cual sea su rol.
+   *
+   * No es el reporte general sin filtros. Ese decide el alcance por rol,
+   * de modo que un Jefe recibía las jornadas de toda su área al abrir su
+   * propio portal.
+   */
+  getMiAsistencia(fechaInicio: string, fechaFin: string): Observable<any[]> {
+    const params = new HttpParams()
+      .set('fechaInicio', fechaInicio)
+      .set('fechaFin',    fechaFin);
+    return this.http.get<any[]>(`${this.apiUrl}/mi-asistencia`, { params });
+  }
+
   exportarExcel(datos: any[], fechaInicio: string, fechaFin: string): void {
     // Transformar datos al formato de la hoja
     const filas = datos.map(r => ({

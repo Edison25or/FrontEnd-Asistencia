@@ -107,6 +107,15 @@
     <div class="form-grid">
 
       <div class="input-group">
+        <label>Fecha de Ingreso *</label>
+        <input type="date" formControlName="fechaIngreso" [max]="maxFechaIngreso">
+        <div class="field-error" *ngIf="trabajadorForm.get('fechaIngreso')?.touched && trabajadorForm.get('fechaIngreso')?.invalid">
+          <span *ngIf="trabajadorForm.get('fechaIngreso')?.errors?.['required']">La fecha de ingreso es obligatoria.</span>
+          <span *ngIf="trabajadorForm.get('fechaIngreso')?.errors?.['fechaIngresoLejana']">La fecha de ingreso no puede estar a más de 90 días.</span>
+        </div>
+      </div>
+
+      <div class="input-group">
         <label>Correo Electrónico *</label>
         <input type="email" formControlName="email" placeholder="correo@empresa.com" maxlength="100">
         <div class="field-error" *ngIf="trabajadorForm.get('email')?.touched && trabajadorForm.get('email')?.invalid">

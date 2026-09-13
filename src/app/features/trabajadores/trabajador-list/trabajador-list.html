@@ -75,6 +75,13 @@
               </button>
             }
 
+            <!-- REPONER CARNÉ: administración, solo cuando ACTIVO -->
+            @if (esAdminOSuperAdmin() && estadoActual === 'ACTIVO') {
+              <button class="btn-icon carnet" title="Reponer carné (pérdida o deterioro)" (click)="abrirModalCarnet(t)">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="9" y1="10" x2="9" y2="14"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="15" y1="10" x2="15" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+              </button>
+            }
+
             <!-- CAMBIAR ROL: solo cuando ACTIVO -->
             @if (esSuperAdmin() && estadoActual === 'ACTIVO') {
               <button class="btn-icon role" title="Cambiar Rol" (click)="abrirModalCambioRol(t)">
@@ -478,6 +485,15 @@
       <h3>Reingresar Trabajador</h3>
       <p>Reingreso de <strong>{{ trabajadorParaReingreso?.nombreCompleto }}</strong>.</p>
 
+      <div class="form-group">
+        <label>Fecha de reingreso *</label>
+        <input type="date" class="input-text" [(ngModel)]="fechaIngresoReingreso">
+      </div>
+      <p class="modal-nota-reingreso">
+        Recibirá un carné nuevo (el anterior deja de funcionar), su contraseña
+        volverá a ser su número de documento y su rol será Trabajador.
+      </p>
+
       <!--
         El puesto es opcional (RN-12): sin indicarlo, el backend conserva
         el del registro anterior. Exigirlo siempre obligaba a volver a
@@ -510,9 +526,12 @@
         </select>
       </div>
       }
+      @if (errorReingreso) {
+        <div class="field-error">{{ errorReingreso }}</div>
+      }
       <div class="modal-actions">
         <button class="btn-info" (click)="cerrarModalReingreso()" [disabled]="isProcesandoModal">Cancelar</button>
-        <button class="btn-success" (click)="procesarReingreso()" [disabled]="isProcesandoModal || (!conservarPuesto && !puestoSeleccionadoReingreso)">
+        <button class="btn-success" (click)="procesarReingreso()" [disabled]="isProcesandoModal || !fechaIngresoReingreso || (!conservarPuesto && !puestoSeleccionadoReingreso)">
           {{ isProcesandoModal ? 'Procesando...' : 'Confirmar Reingreso' }}
         </button>
       </div>
@@ -567,6 +586,84 @@
         </p>
         <div class="modal-actions" style="margin-top: 20px;">
           <button class="btn-info" (click)="cerrarModalReset()">Entendido</button>
+        </div>
+      }
+
+    </div>
+  </div>
+}
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: REPONER CARNÉ                                   -->
+<!-- ══════════════════════════════════════════════════════ -->
+@if (mostrarModalCarnet) {
+  <div class="modal-overlay" (click)="cerrarModalCarnet()">
+    <div class="modal-content modal-reset" (click)="$event.stopPropagation()">
+
+      @if (!carnetExito) {
+        <div class="reset-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+        </div>
+
+        <h3>Reponer carné</h3>
+        <p>
+          Se generará un carné nuevo para
+          <strong>{{ trabajadorParaCarnet?.nombreCompleto }}</strong>.
+        </p>
+        <p class="reset-aviso">
+          El código cambia, de modo que el carné anterior dejará de funcionar
+          en el lector. Habrá que imprimir el nuevo desde la pantalla de Carnés.
+        </p>
+        <p class="reset-aviso">
+          Si el carné solo se dañó y lo tienes en tu poder, no hace falta
+          reponerlo: vuelve a imprimirlo desde Carnés y saldrá con el mismo
+          código.
+        </p>
+
+        <div class="form-group" style="text-align:left; margin-top:16px;">
+          <label>Motivo *</label>
+          <select class="input-text" [(ngModel)]="motivoCarnet">
+            @for (m of motivosCarnet; track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group" style="text-align:left;">
+          <label>Detalle {{ motivoCarnet === 'Otro' ? '*' : '(opcional)' }}</label>
+          <input type="text" class="input-text" maxlength="120"
+                 [(ngModel)]="detalleCarnet"
+                 placeholder="Se dañó al pasar por la faja">
+        </div>
+
+        @if (carnetError) {
+          <div class="reset-error">{{ carnetError }}</div>
+        }
+
+        <div class="modal-actions" style="margin-top: 20px;">
+          <button class="btn-info" (click)="cerrarModalCarnet()" [disabled]="isProcesandoCarnet">
+            Cancelar
+          </button>
+          <button class="btn-reset-confirm" (click)="procesarCarnet()" [disabled]="isProcesandoCarnet">
+            @if (isProcesandoCarnet) { Procesando... }
+            @else { Sí, reponer }
+          </button>
+        </div>
+      }
+
+      @if (carnetExito) {
+        <div class="reset-exito-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Carné repuesto</h3>
+        <p>
+          <strong>{{ trabajadorParaCarnet?.nombreCompleto }}</strong> tiene un código
+          nuevo. Imprime su carné desde la pantalla de Carnés; el anterior ya no
+          funciona en el lector.
+        </p>
+        <div class="modal-actions" style="margin-top: 20px;">
+          <button class="btn-info" (click)="cerrarModalCarnet()">Entendido</button>
         </div>
       }
 

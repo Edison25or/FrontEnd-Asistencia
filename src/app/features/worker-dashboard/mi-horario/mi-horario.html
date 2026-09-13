@@ -19,17 +19,25 @@
       @if (semanaActual?.esquema) {
         <div class="esquema-info">
           <span class="esquema-nombre">{{ semanaActual!.esquema!.nombre }}</span>
-          <span class="esquema-total">{{ semanaActual!.esquema!.totalHorasNetas }} hrs netas</span>
+          <span class="esquema-total">{{ totalEsquema(semanaActual!.esquema) }}</span>
         </div>
         <div class="dias-grid">
           @for (dia of semanaActual!.esquema!.horariosDia; track dia.diaSemana) {
-            <div class="dia-item" [class.descanso]="dia.esDescanso">
+            <div class="dia-item" [class.descanso]="dia.esDescanso" [class.hoy]="esHoy(dia)">
               <span class="dia-nombre">{{ dia.nombreDia }}</span>
               @if (dia.esDescanso) {
                 <span class="dia-desc">Descanso</span>
               } @else {
                 <span class="dia-hora">{{ dia.horaEntrada }} - {{ dia.horaSalida }}</span>
                 <span class="dia-netas">{{ dia.horasNetasFormato }}</span>
+                <!--
+                  Las horas extra programadas del día. Sin esto, la suma de
+                  los días no cuadraba con el total del encabezado: las
+                  netas coincidían, pero la extra aparecía solo arriba.
+                -->
+                @if (dia.extraFormato && dia.extraFormato !== '00:00') {
+                  <span class="dia-extra">+ {{ dia.extraFormato }} extra</span>
+                }
               }
             </div>
           }
@@ -51,7 +59,7 @@
       @if (semanaSiguiente?.esquema) {
         <div class="esquema-info">
           <span class="esquema-nombre">{{ semanaSiguiente!.esquema!.nombre }}</span>
-          <span class="esquema-total">{{ semanaSiguiente!.esquema!.totalHorasNetas }} hrs netas</span>
+          <span class="esquema-total">{{ totalEsquema(semanaSiguiente!.esquema) }}</span>
         </div>
         <div class="dias-grid">
           @for (dia of semanaSiguiente!.esquema!.horariosDia; track dia.diaSemana) {
@@ -62,6 +70,14 @@
               } @else {
                 <span class="dia-hora">{{ dia.horaEntrada }} - {{ dia.horaSalida }}</span>
                 <span class="dia-netas">{{ dia.horasNetasFormato }}</span>
+                <!--
+                  Las horas extra programadas del día. Sin esto, la suma de
+                  los días no cuadraba con el total del encabezado: las
+                  netas coincidían, pero la extra aparecía solo arriba.
+                -->
+                @if (dia.extraFormato && dia.extraFormato !== '00:00') {
+                  <span class="dia-extra">+ {{ dia.extraFormato }} extra</span>
+                }
               }
             </div>
           }

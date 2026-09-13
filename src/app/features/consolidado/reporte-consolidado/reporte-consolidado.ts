@@ -168,7 +168,7 @@ export class ReporteConsolidadoComponent implements OnInit {
       cab.push(`${col.etiqueta}\nNormal`, `${col.etiqueta}\nExtra`);
     }
     cab.push('Total normal', 'Total extra', 'Total feriado',
-             'Faltas', 'Permisos', 'Justif.', 'Tardanza', 'Observaciones');
+             'Faltas', 'Permisos', 'Justif.', 'Feriado', 'Tardanza', 'Observaciones');
     return cab;
   }
 
@@ -186,7 +186,7 @@ export class ReporteConsolidadoComponent implements OnInit {
       }
       fila.push(
         t.hTotalNormales, t.hTotalExtra, t.hTotalFeriado,
-        t.diasFalta, t.diasPermiso, t.diasFaltaJustificada,
+        t.diasFalta, t.diasPermiso, t.diasFaltaJustificada, t.diasFeriadoNoLaborado ?? 0,
         this.formatMin(t.minTotalTardanza),
         t.observaciones ?? '',
       );
@@ -221,7 +221,7 @@ export class ReporteConsolidadoComponent implements OnInit {
       }
       fila.push(
         totNormal, totExtra, totFeriado,
-        t.diasFalta, t.diasPermiso, t.diasFaltaJustificada,
+        t.diasFalta, t.diasPermiso, t.diasFaltaJustificada, t.diasFeriadoNoLaborado ?? 0,
         t.minTotalTardanza ?? 0,
         t.observaciones ?? '',
       );

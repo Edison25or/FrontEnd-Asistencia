@@ -50,6 +50,9 @@
 .esquema-meta   { display: flex; align-items: center; gap: 6px; }
 .badge-horas    { background: #eff6ff; color: #1d4ed8; border-radius: 6px; padding: 2px 8px; font-size: .72rem; font-weight: 700; }
 .badge-tol      { background: #f3f4f6; color: #6b7280; border-radius: 6px; padding: 2px 8px; font-size: .72rem; font-weight: 600; }
+/* Ámbar: tiempo programado que no son horas netas. Se distingue del azul
+   de las netas para que no se lean como un solo número. */
+.badge-extra    { background: #fef3c7; color: #b45309; border-radius: 6px; padding: 2px 8px; font-size: .72rem; font-weight: 700; margin-left: 6px; }
 
 /* Cuerpo dividido: izquierda días | derecha grupos */
 .esquema-card-body {

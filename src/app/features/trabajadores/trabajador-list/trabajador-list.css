@@ -262,6 +262,7 @@
 .btn-icon.reset-pwd:hover { color: #92400e; background-color: #fef3c7; }
 .btn-icon.role:hover      { color: #8b5cf6; background-color: #ede9fe; }
 .btn-icon.reingreso:hover { color: #10b981; background-color: #d1fae5; }
+.btn-icon.carnet:hover    { color: #92400e; background-color: #fef3c7; }
 
 /* =======================================
    MODALES — BASE
@@ -634,4 +635,12 @@ button:disabled {
 .modal-edicion input.ng-valid.ng-touched,
 .modal-edicion select.ng-valid.ng-touched {
   border-color: #28a745 !important;
+}
+
+/* Consecuencias del reingreso: se leen antes de confirmar */
+.modal-nota-reingreso {
+  font-size: .8rem;
+  color: #64748b;
+  line-height: 1.45;
+  margin: 4px 0 12px;
 }

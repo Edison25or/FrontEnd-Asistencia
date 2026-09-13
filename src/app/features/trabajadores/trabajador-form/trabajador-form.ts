@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { TrabajadorService } from '../../../core/services/trabajador.service';
+import { fechaLocal } from '../../../shared/fecha-pe.pipe';
 
 @Component({
   selector: 'app-trabajador-form',
@@ -47,7 +48,12 @@ export class TrabajadorFormComponent implements OnInit {
     parentesco: [''],
     idArea: ['', Validators.required],
     idPuesto: [{ value: '', disabled: true }, Validators.required],
-    idGenero: ['', Validators.required]
+    idGenero: ['', Validators.required],
+    // Fecha real de ingreso. El alta no siempre ocurre el día en que la
+    // persona empieza, y el sistema no genera jornadas anteriores a esta
+    // fecha: sin ella, quien entraba un miércoles recibía faltas desde el
+    // sábado.
+    fechaIngreso: [fechaLocal(), [Validators.required, this.fechaIngresoValidator()]]
   });
 
   ngOnInit() {
@@ -114,6 +120,22 @@ export class TrabajadorFormComponent implements OnInit {
       case 'PASAPORTE': return 'Ej. AB1234567 (6-20 alfanuméricos)';
       default: return '';
     }
+  }
+
+  /** Límite superior del selector. No hay límite inferior: se admite un ingreso pasado. */
+  readonly maxFechaIngreso = fechaLocal(new Date(Date.now() + 90 * 86400000));
+
+  /**
+   * La fecha de ingreso no puede quedar a más de 90 días en el futuro:
+   * a esa distancia casi siempre es un error de digitación. El servidor
+   * aplica la misma regla.
+   */
+  private fechaIngresoValidator() {
+    return (control: any) => {
+      if (!control.value) return null;
+      return control.value > fechaLocal(new Date(Date.now() + 90 * 86400000))
+        ? { fechaIngresoLejana: true } : null;
+    };
   }
 
   onSubmit() {

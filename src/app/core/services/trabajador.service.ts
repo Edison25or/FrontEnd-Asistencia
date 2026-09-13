@@ -19,6 +19,8 @@ export interface TrabajadorRequest {
   parentesco?: 'PADRE' | 'MADRE' | 'CONYUGE' | 'HIJO_A' | 'HERMANO_A' | 'OTRO';
   idPuesto: number;
   idGenero: number;
+  /** Fecha real de ingreso (yyyy-MM-dd). Solo al registrar; sin ella, hoy. */
+  fechaIngreso?: string;
 }
 
 @Injectable({
@@ -99,11 +101,15 @@ export class TrabajadorService {
    * sin mostrar error, porque la excepción ocurría fuera del flujo del
    * observable y no la capturaba el bloque error.
    */
-  reingresarTrabajador(id: number, idPuesto?: number): Observable<any> {
+  reingresarTrabajador(id: number, idPuesto?: number, fechaIngreso?: string): Observable<any> {
 
     let params = new HttpParams();
     if (idPuesto != null) {
       params = params.set('idPuesto', String(idPuesto));
+    }
+    // Opcional: sin fecha, el backend toma la del día.
+    if (fechaIngreso) {
+      params = params.set('fechaIngreso', fechaIngreso);
     }
 
     return this.http.post<any>(
@@ -139,6 +145,18 @@ export class TrabajadorService {
   // =============================
   // RESET PASSWORD (Admin)
   // =============================
+  /**
+   * Repone el carné: genera un código nuevo, con lo que el anterior deja
+   * de funcionar en el lector. El motivo queda en auditoría.
+   */
+  reponerCarnet(id: number, motivo: string): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/${id}/reponer-carnet`,
+      null,
+      { params: new HttpParams().set('motivo', motivo) }
+    );
+  }
+
   resetearPassword(id: number): Observable<string> {
     return this.http.post(
       `${this.apiUrl}/${id}/reset-password`,

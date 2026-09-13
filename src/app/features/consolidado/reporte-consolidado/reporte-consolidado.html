@@ -115,7 +115,7 @@
               {{ col.etiqueta }}
             </th>
             <th colspan="3" class="th-grupo">Totales</th>
-            <th colspan="3" class="th-grupo">Ausencias (días)</th>
+            <th colspan="4" class="th-grupo">Ausencias (días)</th>
             <th rowspan="2" class="th-grupo">Tardanza</th>
             <th rowspan="2" class="th-desc">Observaciones</th>
           </tr>
@@ -130,6 +130,8 @@
             <th class="th-sub">Falta</th>
             <th class="th-sub">Permiso</th>
             <th class="th-sub">Justif.</th>
+            <!-- Feriado con turno programado y sin marcación (RN-44) -->
+            <th class="th-sub">Feriado</th>
           </tr>
         </thead>
 
@@ -166,6 +168,12 @@
                 {{ t.diasFaltaJustificada }}
               </span>
               <span *ngIf="t.diasFaltaJustificada === 0">-</span>
+            </td>
+            <td class="td-c">
+              <span class="chip-feriado-dia" *ngIf="t.diasFeriadoNoLaborado > 0">
+                {{ t.diasFeriadoNoLaborado }}
+              </span>
+              <span *ngIf="!t.diasFeriadoNoLaborado">-</span>
             </td>
 
             <td class="td-num">{{ formatMin(t.minTotalTardanza) }}</td>

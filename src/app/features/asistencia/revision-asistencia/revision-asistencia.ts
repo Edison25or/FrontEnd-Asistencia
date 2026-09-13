@@ -69,14 +69,56 @@ export class RevisionAsistenciaComponent implements OnInit {
     return a.tipo === 'FALTA_INJUSTIFICADA' && !a.revisadoPor;
   }
 
-  /** Jornadas que piden una decisión del Jefe, bloqueen o no el cierre. */
-  requiereAtencion(a: any): boolean {
-    return a.requiereRevision === true || this.resueltaPorSistema(a);
+  /**
+   * Jornada de hoy o de un día que todavía no llegó.
+   *
+   * No es un pendiente: nadie puede resolverla porque aún no ha ocurrido.
+   * El turno en curso se marcará al terminar, y el cierre diario resolverá
+   * el resto cuando venza su ventana.
+   */
+  esPorVenir(a: any): boolean {
+    return !!a?.fecha && a.fecha >= fechaLocal();
   }
 
-  /** De las que piden atención, cuántas impiden cerrar la quincena. */
+  /**
+   * Jornadas que impiden generar el consolidado (RN-37).
+   *
+   * Criterio del servidor (countBloqueantes): estado PENDIENTE o MARCADO,
+   * o CALCULADO con revisión pendiente. Se excluyen las que aún no han
+   * ocurrido.
+   *
+   * Esa exclusión no contradice al servidor: generarConsolidado() rechaza
+   * la quincena que no ha terminado antes de contar nada, de modo que
+   * cuando el conteo importa ya no quedan jornadas futuras. Mostrarlas
+   * como bloqueantes durante la quincena en curso señalaba un problema
+   * que nadie podía resolver.
+   */
+  bloqueaCierre(a: any): boolean {
+    if (this.esPorVenir(a)) return false;
+    if (a?.estado === 'PENDIENTE' || a?.estado === 'MARCADO') return true;
+    return a?.estado === 'CALCULADO' && a?.requiereRevision === true;
+  }
+
+  /**
+   * Jornadas que piden una decisión del Jefe, bloqueen o no el cierre.
+   *
+   * Mismo criterio que el contador, más las faltas que resolvió el proceso
+   * automático y nadie confirmó. Si el filtro y el contador usan criterios
+   * distintos, la pantalla muestra un número que no corresponde a las
+   * filas que enseña.
+   */
+  requiereAtencion(a: any): boolean {
+    return this.bloqueaCierre(a) || this.resueltaPorSistema(a);
+  }
+
   get totalBloqueantes(): number {
-    return this.asistencias.filter(a => a.requiereRevision === true).length;
+    return this.asistencias.filter(a => this.bloqueaCierre(a)).length;
+  }
+
+  /** Jornadas de hoy o posteriores que todavía no se pueden resolver. */
+  get totalPorVenir(): number {
+    return this.asistencias.filter(
+      a => this.esPorVenir(a) && ['PENDIENTE', 'MARCADO'].includes(a.estado)).length;
   }
 
   get totalFaltasSinConfirmar(): number {
@@ -279,7 +321,110 @@ export class RevisionAsistenciaComponent implements OnInit {
     this.valObservacion = a.observacion   ?? '';
     this.valResultado   = a.resultadoValidacion || 'APROBADO';
     this.errorVal       = '';
+    this.prepararCorreccion(a);
     this.mostrarModalVal = true;
+  }
+
+  // ── Completar marcación incompleta (CU15) ─────────────────
+  //
+  // Una jornada con un solo extremo marcado no se resuelve validando
+  // tiempos: no hay jornada de la que derivar minutos fuera de programación.
+  // Lo que falta es registrar la marcación que no se tomó.
+  corrIngreso = '';
+  corrSalida  = '';
+
+  /**
+   * true si la jornada tiene un solo extremo marcado.
+   *
+   * Se deduce de los datos y no del tipo, porque una jornada puede quedar
+   * incompleta por vías distintas al cierre diario: un registro por
+   * contingencia con un solo dato conocido, por ejemplo.
+   */
+  esIncompleta(a: any): boolean {
+    if (!a) return false;
+    return !!a.ingresoReal !== !!a.salidaReal;
+  }
+
+  /** Qué extremo falta, para redactar la pantalla sin repetir condiciones. */
+  extremoFaltante(a: any): 'entrada' | 'salida' | null {
+    if (!this.esIncompleta(a)) return null;
+    return a.ingresoReal ? 'salida' : 'entrada';
+  }
+
+  /**
+   * Construye el valor de un campo datetime-local a partir de la fecha de
+   * la jornada y una hora "HH:mm".
+   *
+   * El día importa: en el turno noche la salida cae en el día calendario
+   * siguiente. Cuando la hora indicada es anterior a la de referencia, se
+   * asume que cruzó la medianoche.
+   */
+  private aDateTimeLocal(fechaJornada: string, hora?: string | null,
+                         horaReferencia?: string | null): string {
+    if (!fechaJornada || !hora) return '';
+    let fecha = fechaJornada;
+    if (horaReferencia && hora < horaReferencia) {
+      const d = new Date(`${fechaJornada}T00:00:00`);
+      d.setDate(d.getDate() + 1);
+      fecha = d.toISOString().slice(0, 10);
+    }
+    return `${fecha}T${hora}`;
+  }
+
+  /**
+   * Prellena el formulario con lo que ya hay y sugiere lo que falta a
+   * partir del horario programado.
+   *
+   * Es una sugerencia, no un valor impuesto: quien revisa debe contrastarla
+   * con el cuaderno de contingencias o con el supervisor de turno. El
+   * sistema nunca deduce una hora que nadie registró.
+   */
+  private prepararCorreccion(a: any) {
+    this.corrIngreso = a.ingresoReal
+      ? this.aDateTimeLocal(a.fecha, a.ingresoReal)
+      : this.aDateTimeLocal(a.fecha, a.ingresoProg);
+
+    this.corrSalida = a.salidaReal
+      ? this.aDateTimeLocal(a.fecha, a.salidaReal, a.ingresoReal ?? a.ingresoProg)
+      : this.aDateTimeLocal(a.fecha, a.salidaProg, a.ingresoProg);
+  }
+
+  guardarCorreccion() {
+    if (!this.asistenciaVal) return;
+
+    if (!this.corrIngreso || !this.corrSalida) {
+      this.errorVal = 'Indica la entrada y la salida de la jornada.';
+      return;
+    }
+    if (this.corrSalida <= this.corrIngreso) {
+      this.errorVal = 'La salida debe ser posterior a la entrada.';
+      return;
+    }
+    if (!this.valObservacion.trim()) {
+      this.errorVal = 'El motivo es obligatorio: indica de dónde sale la hora registrada.';
+      return;
+    }
+
+    this.isProcesando = true;
+    this.errorVal     = '';
+
+    this.svc.corregirMarcacion({
+      idAsistencia: this.asistenciaVal.idAsistencia,
+      ingresoReal:  `${this.corrIngreso}:00`,
+      salidaReal:   `${this.corrSalida}:00`,
+      motivo:       this.valObservacion.trim()
+    }).subscribe({
+      next: () => {
+        this.isProcesando    = false;
+        this.mostrarModalVal = false;
+        this.cargarAsistencias();
+      },
+      error: (e: any) => {
+        this.errorVal     = mensajeError(e, 'Error al completar la marcación.');
+        this.isProcesando = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   /**
@@ -486,7 +631,6 @@ export class RevisionAsistenciaComponent implements OnInit {
     return this.asistencias.filter(a => a.estado === 'REVISADO').length;
   }
   get totalPendientes(): number {
-    return this.asistencias.filter(
-      a => ['CALCULADO','MARCADO','PENDIENTE'].includes(a.estado)).length;
+    return this.totalBloqueantes;
   }
 }
